@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sourceenergy.tech/schemas/ssr/anchor-roster-provenance.schema.json",
+  "title": "SSR AnchorTile Roster Export Provenance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_system",
+    "exported_at",
+    "record_count",
+    "sha256",
+    "source_type"
+  ],
+  "properties": {
+    "source_system": {"type": "string", "minLength": 1},
+    "source_environment": {"type": ["string", "null"]},
+    "source_type": {
+      "type": "string",
+      "enum": ["database_export", "registry_packet", "api_response", "object_store_export"]
+    },
+    "source_version": {"type": ["string", "null"]},
+    "exported_at": {"type": "string", "format": "date-time"},
+    "operator_reference": {"type": ["string", "null"]},
+    "record_count": {"type": "integer", "const": 729},
+    "sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+    "filters": {"type": "array", "items": {"type": "string"}, "default": []},
+    "notes": {"type": ["string", "null"]}
+  }
+}
