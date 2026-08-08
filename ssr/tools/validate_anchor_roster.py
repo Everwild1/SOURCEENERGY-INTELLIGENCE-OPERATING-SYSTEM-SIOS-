@@ -137,8 +137,12 @@ def load_rows(path: Path) -> list[dict[str, Any]]:
     if suffix == ".json":
         with path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
+        if isinstance(payload, dict):
+            if "records" not in payload:
+                raise RosterValidationError("JSON object input must contain a 'records' array")
+            payload = payload["records"]
         if not isinstance(payload, list) or not all(isinstance(item, dict) for item in payload):
-            raise RosterValidationError("JSON input must be an array of objects")
+            raise RosterValidationError("JSON input must be an array of objects or an object containing a 'records' array")
         return payload
     raise RosterValidationError("input must be .csv or .json")
 
