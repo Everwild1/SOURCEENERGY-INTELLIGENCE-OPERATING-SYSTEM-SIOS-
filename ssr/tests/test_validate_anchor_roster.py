@@ -1,4 +1,6 @@
 import importlib.util
+import json
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +31,20 @@ class AnchorRosterValidationTests(unittest.TestCase):
     def test_accepts_complete_unique_729_row_roster(self):
         rows = validator.validate_rows(valid_rows())
         self.assertEqual(729, len(rows))
+
+    def test_loads_json_records_envelope(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "roster.json"
+            path.write_text(json.dumps({"records": valid_rows()}), encoding="utf-8")
+            rows = validator.load_rows(path)
+            self.assertEqual(729, len(rows))
+
+    def test_rejects_json_object_without_records(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "roster.json"
+            path.write_text(json.dumps({"data": valid_rows()}), encoding="utf-8")
+            with self.assertRaises(validator.RosterValidationError):
+                validator.load_rows(path)
 
     def test_rejects_wrong_record_count(self):
         with self.assertRaises(validator.RosterValidationError):
