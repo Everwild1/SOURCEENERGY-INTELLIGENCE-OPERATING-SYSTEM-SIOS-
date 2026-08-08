@@ -1,0 +1,43 @@
+name: SSR Roster Gate
+
+on:
+  pull_request:
+    paths:
+      - 'ssr/**'
+      - '.github/workflows/ssr-roster-gate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ssr/**'
+      - '.github/workflows/ssr-roster-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-ssr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run SSR unit tests
+        run: python -m unittest discover -s ssr/tests -p 'test_*.py' -v
+
+      - name: Validate canonical roster when present
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROSTER='ssr/data/anchor_tiles.canonical.csv'
+          if [[ -f "$ROSTER" ]]; then
+            python ssr/tools/validate_anchor_roster.py "$ROSTER"
+            python ssr/tools/export_scorecard_sync.py "$ROSTER" /tmp/ssr-scorecard-sync.csv
+            test "$(($(wc -l < /tmp/ssr-scorecard-sync.csv) - 1))" -eq 729
+          else
+            echo 'Canonical production roster not present; structural tests only.'
+          fi
