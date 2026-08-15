@@ -5,15 +5,15 @@ from setc.core import SETCIdentifier
 from setc.organizations.relationships import OrganizationRelationship, RelationshipState, RelationshipType
 
 
-def oid(value: str) -> SETCIdentifier:
-    return SETCIdentifier.parse(value)
+def oid(hex_value: str) -> SETCIdentifier:
+    return SETCIdentifier(f"SETC-OID-{hex_value}")
 
 
 class OrganizationRelationshipTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.a = oid("SETC-OID-01HZX000000000000000000001")
-        self.b = oid("SETC-OID-01HZX000000000000000000002")
-        self.rid = oid("SETC-RID-01HZX000000000000000000003")
+        self.a = oid("00000000000000000000000000000001")
+        self.b = oid("00000000000000000000000000000002")
+        self.rid = oid("00000000000000000000000000000003")
 
     def test_self_relationship_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
