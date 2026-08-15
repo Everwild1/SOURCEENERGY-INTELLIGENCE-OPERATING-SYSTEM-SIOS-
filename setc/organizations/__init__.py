@@ -25,6 +25,11 @@ from .incubation import (
     ResourceAccessGrant,
 )
 from .models import Organization, OrganizationCapability, OrganizationType, VerificationState
+from .procurement import (
+    BidState, ContractPerformanceRecord, MarketAccessReferral, OpportunityState,
+    ProcurementAward, ProcurementBid, ProcurementOpportunity, ProcurementReadinessProfile,
+    ProcurementReadinessState, SupplierQualification,
+)
 from .programs import Cohort, CohortState, ParticipationState, Program, ProgramParticipation, ProgramState, ProgramType
 from .relationships import OrganizationRelationship, RelationshipState, RelationshipType
 from .ventures import (
