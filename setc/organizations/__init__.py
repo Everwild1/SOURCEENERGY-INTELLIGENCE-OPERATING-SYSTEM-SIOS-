@@ -40,6 +40,10 @@ from .procurement import (
 )
 from .programs import Cohort, CohortState, ParticipationState, Program, ProgramParticipation, ProgramState, ProgramType
 from .relationships import OrganizationRelationship, RelationshipState, RelationshipType
+from .reporting import (
+    InstitutionalInsight, PipelinePosition, PortfolioAggregate, ReportingDefinition,
+    ReportingDistribution, ReportingScope, ReportingSnapshot, SnapshotStatus,
+)
 from .ventures import (
     EnterpriseActivation, EntrepreneurshipCenterProfile, FounderAuthority, FounderRelationship,
     FounderRole, LegalEntityFormation, VentureOrigin, VentureSponsorRelationship,
