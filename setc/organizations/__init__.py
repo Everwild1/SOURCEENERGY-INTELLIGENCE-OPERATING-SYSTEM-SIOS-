@@ -1,5 +1,15 @@
 """Canonical SETC Organizations domain."""
 
+from .foundations import (
+    AwardState,
+    FoundationProfile,
+    FundingInstrument,
+    GrantAward,
+    GrantMilestone,
+    ImpactReport,
+    MilestoneState,
+    PhilanthropicInstrumentType,
+)
 from .models import Organization, OrganizationCapability, OrganizationType, VerificationState
 from .programs import (
     Cohort,
@@ -27,4 +37,12 @@ __all__ = [
     "CohortState",
     "ProgramParticipation",
     "ParticipationState",
+    "FoundationProfile",
+    "FundingInstrument",
+    "PhilanthropicInstrumentType",
+    "GrantAward",
+    "AwardState",
+    "GrantMilestone",
+    "MilestoneState",
+    "ImpactReport",
 ]
