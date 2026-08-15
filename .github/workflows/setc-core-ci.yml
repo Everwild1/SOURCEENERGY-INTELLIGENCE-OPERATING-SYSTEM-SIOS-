@@ -1,0 +1,24 @@
+name: SETC Core CI
+
+on:
+  pull_request:
+    paths:
+      - 'setc/**'
+      - '.github/workflows/setc-core-ci.yml'
+  push:
+    branches:
+      - 'agent/setc-*'
+    paths:
+      - 'setc/**'
+      - '.github/workflows/setc-core-ci.yml'
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run SETC unit tests
+        run: python -m unittest discover -s setc/tests -p 'test_*.py' -v
