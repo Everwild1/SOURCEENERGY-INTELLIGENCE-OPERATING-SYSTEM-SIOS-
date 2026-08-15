@@ -5,6 +5,11 @@ from .acceleration import (
     CapitalReadinessReferral, CommercializationMilestone, EvidenceQuality,
     PreparationState, ReadinessPreparation, StrategicPartnerEngagement, TractionEvidence,
 )
+from .commercialization import (
+    CommercializationOpportunity, CommercializationState, InventionDisclosure,
+    IPAssetReference, IPRightType, ResearchAssetReference, RightsInstrument,
+    RightsInstrumentType, TechnologyTransferAuthority,
+)
 from .foundations import (
     AwardState, FoundationProfile, FundingInstrument, GrantAward, GrantMilestone,
     ImpactReport, MilestoneState, PhilanthropicInstrumentType,
@@ -39,4 +44,7 @@ __all__ = [
     "EntrepreneurshipCenterProfile", "VentureOrigin", "VentureState", "FounderRelationship", "FounderRole",
     "FounderAuthority", "LegalEntityFormation", "VentureStudioRelationship", "EnterpriseActivation",
     "VentureSponsorRelationship",
+    "ResearchAssetReference", "InventionDisclosure", "IPAssetReference", "IPRightType",
+    "TechnologyTransferAuthority", "RightsInstrument", "RightsInstrumentType",
+    "CommercializationOpportunity", "CommercializationState",
 ]
