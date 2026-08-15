@@ -28,6 +28,10 @@ from .incubation import (
     IncubationParticipation, IncubationState, MentorAssignment, ProgramHandoff,
     ResourceAccessGrant,
 )
+from .metrics import (
+    ImpactClaim, ImpactClaimStatus, ImpactValidation, MeasurementPeriod, MetricDefinition,
+    MetricObservation, MetricTarget, MetricValueType, ObservationStatus,
+)
 from .models import Organization, OrganizationCapability, OrganizationType, VerificationState
 from .procurement import (
     BidState, ContractPerformanceRecord, MarketAccessReferral, OpportunityState,
