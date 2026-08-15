@@ -12,7 +12,13 @@ from setc.organizations.acceleration import (
 
 
 def sid(prefix: str, n: int) -> SETCIdentifier:
-    return SETCIdentifier(f"SETC-{prefix}-{n:032x}")
+    """Return the canonical identifier format supported by the SETC core.
+
+    The prefix argument documents the logical test role without minting a
+    parallel identifier namespace before the core formally supports one.
+    """
+    _ = prefix
+    return SETCIdentifier(f"SETC-OID-{n:032x}")
 
 
 class AccelerationTests(unittest.TestCase):
