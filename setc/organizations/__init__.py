@@ -19,6 +19,11 @@ from .programs import (
     Cohort, CohortState, ParticipationState, Program, ProgramParticipation, ProgramState, ProgramType,
 )
 from .relationships import OrganizationRelationship, RelationshipState, RelationshipType
+from .ventures import (
+    EnterpriseActivation, EntrepreneurshipCenterProfile, FounderAuthority, FounderRelationship,
+    FounderRole, LegalEntityFormation, VentureOrigin, VentureSponsorRelationship,
+    VentureState, VentureStudioRelationship,
+)
 
 __all__ = [
     "Organization", "OrganizationCapability", "OrganizationType", "VerificationState",
@@ -31,4 +36,7 @@ __all__ = [
     "AccelerationApplication", "AccelerationParticipation", "AccelerationState", "TractionEvidence", "EvidenceQuality",
     "CommercializationMilestone", "StrategicPartnerEngagement", "ReadinessPreparation", "PreparationState",
     "CapitalReadinessReferral",
+    "EntrepreneurshipCenterProfile", "VentureOrigin", "VentureState", "FounderRelationship", "FounderRole",
+    "FounderAuthority", "LegalEntityFormation", "VentureStudioRelationship", "EnterpriseActivation",
+    "VentureSponsorRelationship",
 ]
