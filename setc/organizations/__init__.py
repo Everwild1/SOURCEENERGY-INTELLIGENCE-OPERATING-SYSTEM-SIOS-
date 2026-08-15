@@ -37,5 +37,9 @@ from .ventures import (
     FounderRole, LegalEntityFormation, VentureOrigin, VentureSponsorRelationship,
     VentureState, VentureStudioRelationship,
 )
+from .verification import (
+    AccreditationMapping, Credential, CredentialStatus, EvidenceClassification,
+    EvidenceRecord, VerificationAuthority, VerificationRecord, VerificationStatus,
+)
 
 __all__ = [name for name in globals() if not name.startswith("_")]
