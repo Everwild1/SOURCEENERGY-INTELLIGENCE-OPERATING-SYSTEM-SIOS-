@@ -54,6 +54,11 @@ from .resilience import (
     DisruptionDeclaration, DisruptionState, ExerciseOutcome, RecoveryEvidence,
     RecoveryObjective, ResilienceCorrectiveAction, ResilienceExercise,
 )
+from .risk_compliance import (
+    ComplianceAssessment, ComplianceBreach, ComplianceObligation, ComplianceState,
+    RiskAcceptance, RiskControlMapping, RiskMonitoringRecord, RiskRegisterEntry, RiskState,
+    RiskTreatment,
+)
 from .security_privacy import (
     AccessDecision, ConsentRecord, DataAssetControl, DataClassification, DataGovernancePolicy,
     IncidentState, LegalBasis, PrivacyEvent, ProcessingAuthorization, RetentionRule,
