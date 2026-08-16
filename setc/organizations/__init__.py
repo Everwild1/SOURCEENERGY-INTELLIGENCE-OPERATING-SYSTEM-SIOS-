@@ -104,6 +104,11 @@ from .risk_compliance import (
     RiskAcceptance, RiskControlMapping, RiskMonitoringRecord, RiskRegisterEntry, RiskState,
     RiskTreatment,
 )
+from .risk_controls import (
+    ControlAssessment, ControlEffectiveness, ControlException, ControlObjective,
+    InstitutionalRisk, RiskControlLink, RiskDecisionLink, RiskDisposition,
+    RiskEscalation, RiskTreatmentPlan,
+)
 from .security_privacy import (
     AccessDecision, ConsentRecord, DataAssetControl, DataClassification, DataGovernancePolicy,
     IncidentState, LegalBasis, PrivacyEvent, ProcessingAuthorization, RetentionRule,
