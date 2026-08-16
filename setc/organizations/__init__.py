@@ -7,8 +7,8 @@ from .acceleration import (
 )
 from .asset_stewardship import (
     AssetEncumbrance, AssetRecord, AssetTransfer, AssetTransferState, AssetType,
-    AssetValuationObservation, AssetVerification, CapitalStewardshipMandate,
-    ValuationStatus,
+    AssetValuationObservation, AssetVerification, CapitalAllocation,
+    StewardshipAuthority, ValuationStatus,
 )
 from .capital_readiness import (
     AssessmentDimension, AssessmentFinding, AssessmentFramework, AssessmentState,
