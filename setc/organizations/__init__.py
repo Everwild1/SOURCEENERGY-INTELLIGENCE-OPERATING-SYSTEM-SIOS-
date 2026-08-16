@@ -1,5 +1,11 @@
 """Canonical SETC Organizations domain."""
 
+from .accountability import (
+    AccountabilityAssignment, AccountabilityFinding, AccountabilityFindingState,
+    AttestationStatus, ConflictOfInterestDeclaration, CorrectiveCommitment,
+    DisclosureClassification, DisclosureRecord, InstitutionalAttestation,
+    TransparencyObligation,
+)
 from .acceleration import (
     AccelerationApplication, AccelerationParticipation, AccelerationState,
     CapitalReadinessReferral, CommercializationMilestone, EvidenceQuality,
