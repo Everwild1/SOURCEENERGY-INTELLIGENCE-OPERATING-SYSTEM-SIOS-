@@ -31,6 +31,11 @@ from .commercialization import (
     IPAssetReference, IPRightType, ResearchAssetReference, RightsInstrument,
     RightsInstrumentType, TechnologyTransferAuthority,
 )
+from .decision_rights import (
+    ApprovalThreshold, DecisionDelegation, DecisionEscalation, DecisionExecutionRecord,
+    DecisionOutcome, DecisionRecord, DecisionRecusal, DecisionRightAssignment,
+    DecisionRightState, QuorumRequirement,
+)
 from .finance_treasury import (
     AccountType, BudgetAllocation, DisbursementAuthorization, DisbursementState,
     FinancialCommitment, FundingSource, ReconciliationRecord, TreasuryAccount,
