@@ -28,6 +28,11 @@ from .incubation import (
     IncubationParticipation, IncubationState, MentorAssignment, ProgramHandoff,
     ResourceAccessGrant,
 )
+from .interoperability import (
+    DataSharingAuthorization, EvidencePackage, ExchangeDirection, ExchangeSchema,
+    ExchangeStatus, ExternalInstitutionMapping, ImportTrustStatus, InstitutionalExchange,
+    SynchronizationRecord,
+)
 from .metrics import (
     ImpactClaim, ImpactClaimStatus, ImpactValidation, MeasurementPeriod, MetricDefinition,
     MetricObservation, MetricTarget, MetricValueType, ObservationStatus,
