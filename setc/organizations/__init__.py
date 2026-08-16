@@ -21,6 +21,11 @@ from .asset_stewardship import (
     AssetValuationObservation, AssetVerification, CapitalAllocation,
     StewardshipAuthority, ValuationStatus,
 )
+from .assurance_audit import (
+    AssuranceEngagement, AssuranceEngagementState, AssuranceOpinion,
+    AssuranceOpinionRecord, AuditEvidenceRecord, AuditFinding, AuditFindingSeverity,
+    AuditRemediation, ManagementResponse, RemediationVerification,
+)
 from .capital_readiness import (
     AssessmentDimension, AssessmentFinding, AssessmentFramework, AssessmentState,
     CertificationState, ReadinessAssessment, ReadinessCertification, ReadinessPathway,
