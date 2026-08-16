@@ -16,6 +16,10 @@ from .agreements_obligations import (
     AgreementState, BreachState, InstitutionalAgreement, ObligationState,
     PerformanceEvidence, TerminationAuthorization,
 )
+from .appeals_review import (
+    AppealFiling, AppealFinalityRecord, AppealRight, AppealStandingDetermination,
+    AppealState, AppealStay, ReviewDetermination, ReviewOutcome, ReviewRecord, ReviewRemand,
+)
 from .asset_stewardship import (
     AssetEncumbrance, AssetRecord, AssetTransfer, AssetTransferState, AssetType,
     AssetValuationObservation, AssetVerification, CapitalAllocation,
