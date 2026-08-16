@@ -49,6 +49,11 @@ from .reporting import (
     InstitutionalInsight, PipelinePosition, PortfolioAggregate, ReportingDefinition,
     ReportingDistribution, ReportingScope, ReportingSnapshot, SnapshotStatus,
 )
+from .resilience import (
+    ContinuityActivation, ContinuityPlan, ContinuityState, CriticalServiceDependency,
+    DisruptionDeclaration, DisruptionState, ExerciseOutcome, RecoveryEvidence,
+    RecoveryObjective, ResilienceCorrectiveAction, ResilienceExercise,
+)
 from .security_privacy import (
     AccessDecision, ConsentRecord, DataAssetControl, DataClassification, DataGovernancePolicy,
     IncidentState, LegalBasis, PrivacyEvent, ProcessingAuthorization, RetentionRule,
