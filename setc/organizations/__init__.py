@@ -49,6 +49,11 @@ from .reporting import (
     InstitutionalInsight, PipelinePosition, PortfolioAggregate, ReportingDefinition,
     ReportingDistribution, ReportingScope, ReportingSnapshot, SnapshotStatus,
 )
+from .security_privacy import (
+    AccessDecision, ConsentRecord, DataAssetControl, DataClassification, DataGovernancePolicy,
+    IncidentState, LegalBasis, PrivacyEvent, ProcessingAuthorization, RetentionRule,
+    SecurityIncident,
+)
 from .ventures import (
     EnterpriseActivation, EntrepreneurshipCenterProfile, FounderAuthority, FounderRelationship,
     FounderRole, LegalEntityFormation, VentureOrigin, VentureSponsorRelationship,
