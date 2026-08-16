@@ -5,6 +5,11 @@ from .acceleration import (
     CapitalReadinessReferral, CommercializationMilestone, EvidenceQuality,
     PreparationState, ReadinessPreparation, StrategicPartnerEngagement, TractionEvidence,
 )
+from .asset_stewardship import (
+    AssetEncumbrance, AssetRecord, AssetTransfer, AssetTransferState, AssetType,
+    AssetValuationObservation, AssetVerification, CapitalAllocation,
+    StewardshipAuthority, ValuationStatus,
+)
 from .capital_readiness import (
     AssessmentDimension, AssessmentFinding, AssessmentFramework, AssessmentState,
     CertificationState, ReadinessAssessment, ReadinessCertification, ReadinessPathway,
