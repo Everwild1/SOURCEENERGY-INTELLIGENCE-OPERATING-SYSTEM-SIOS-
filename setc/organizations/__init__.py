@@ -65,6 +65,11 @@ from .procurement import (
     ProcurementReadinessState, SupplierQualification,
 )
 from .programs import Cohort, CohortState, ParticipationState, Program, ProgramParticipation, ProgramState, ProgramType
+from .records_governance import (
+    AuthenticityStatus, InstitutionalRecord, LegalHold, RecordAccessAuthorization,
+    RecordAuthenticityVerification, RecordClassification, RecordDispositionAuthorization,
+    RecordStatus, RecordVersion, RetentionSchedule,
+)
 from .relationships import OrganizationRelationship, RelationshipState, RelationshipType
 from .reporting import (
     InstitutionalInsight, PipelinePosition, PortfolioAggregate, ReportingDefinition,
