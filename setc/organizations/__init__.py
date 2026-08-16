@@ -101,6 +101,11 @@ from .records_governance import (
     RecordStatus, RecordVersion, RetentionSchedule,
 )
 from .relationships import OrganizationRelationship, RelationshipState, RelationshipType
+from .remediation_resolution import (
+    RemediationCompletionRecord, RemediationEscalation, RemediationObligation,
+    RemediationState, RemediationValidation, ResolutionMilestone, ResolutionPlan,
+    ResolutionRecord, ResolutionReopening, ResolutionState,
+)
 from .reporting import (
     InstitutionalInsight, PipelinePosition, PortfolioAggregate, ReportingDefinition,
     ReportingDistribution, ReportingScope, ReportingSnapshot, SnapshotStatus,
