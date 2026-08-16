@@ -74,6 +74,11 @@ from .metrics import (
     MetricObservation, MetricTarget, MetricValueType, ObservationStatus,
 )
 from .models import Organization, OrganizationCapability, OrganizationType, VerificationState
+from .monitoring_oversight import (
+    CorrectiveDirective, MonitoringObservation, MonitoringStatus, MonitoringThreshold,
+    OversightClosureVerification, OversightEscalation, OversightException, OversightMandate,
+    OversightReviewState, SupervisoryReview,
+)
 from .policy_rules import (
     InstitutionalPolicy, PolicyApproval, PolicyDecisionLink, PolicyEnforcementRecord,
     PolicyException, PolicyRule, PolicyState, PrecedenceLevel, RuleEffect, RuleEvaluation,
