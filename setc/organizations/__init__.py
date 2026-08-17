@@ -45,6 +45,11 @@ from .commercialization import (
     IPAssetReference, IPRightType, ResearchAssetReference, RightsInstrument,
     RightsInstrumentType, TechnologyTransferAuthority,
 )
+from .compliance_supervision import (
+    ComplianceAssessmentRecord, ComplianceEvidenceRecord, ComplianceMandate,
+    ComplianceRemediationRecord, ComplianceSupervisionState, ComplianceVerification,
+    SupervisoryActionState, SupervisoryDirective, SupervisoryEscalation, SupervisoryFinding,
+)
 from .decision_rights import (
     ApprovalThreshold, DecisionDelegation, DecisionEscalation, DecisionExecutionRecord,
     DecisionOutcome, DecisionRecord, DecisionRecusal, DecisionRightAssignment,
