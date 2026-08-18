@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - 'setc/**'
+      - 'tests/test_setc_*.py'
       - '.github/workflows/setc-core-ci.yml'
   push:
     branches:
       - 'agent/setc-*'
     paths:
       - 'setc/**'
+      - 'tests/test_setc_*.py'
       - '.github/workflows/setc-core-ci.yml'
 
 jobs:
