@@ -1,0 +1,39 @@
+name: Source Coin CI
+
+on:
+  pull_request:
+    paths:
+      - 'setc/source_coin/**'
+      - 'setc/migrations/004_source_coin_supabase.sql'
+      - 'setc/migrations/005_source_coin_ledger_org_integration.sql'
+      - 'setc/tests/test_source_coin*.py'
+      - '.github/workflows/source-coin-ci.yml'
+  push:
+    branches:
+      - 'agent/source-coin-*'
+    paths:
+      - 'setc/source_coin/**'
+      - 'setc/migrations/004_source_coin_supabase.sql'
+      - 'setc/migrations/005_source_coin_ledger_org_integration.sql'
+      - 'setc/tests/test_source_coin*.py'
+      - '.github/workflows/source-coin-ci.yml'
+
+jobs:
+  source-coin-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run Source Coin unit and invariant tests
+        env:
+          SOURCE_COIN_MINT_ENABLED: 'false'
+          SOURCE_COIN_BURN_ENABLED: 'false'
+          SOURCE_COIN_PRODUCTION_ECONOMY_ENABLED: 'false'
+        run: python -m unittest discover -s setc/tests -p 'test_source_coin*.py' -v
+      - name: Assert production gates remain closed in CI
+        run: |
+          test "${SOURCE_COIN_MINT_ENABLED:-false}" = "false"
+          test "${SOURCE_COIN_BURN_ENABLED:-false}" = "false"
+          test "${SOURCE_COIN_PRODUCTION_ECONOMY_ENABLED:-false}" = "false"
