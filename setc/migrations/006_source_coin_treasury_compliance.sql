@@ -15,7 +15,7 @@ create table if not exists source_coin.supply_policies (
 
 create table if not exists source_coin.treasury_accounts (
   treasury_account_id uuid primary key,
-  coin_account_id uuid not null references source_coin.coin_accounts(account_id),
+  coin_account_id uuid not null references source_coin.accounts(account_id),
   purpose text not null,
   status text not null default 'ACTIVE' check (status in ('ACTIVE','SUSPENDED','CLOSED')),
   created_at timestamptz not null default now()
@@ -37,11 +37,11 @@ create table if not exists source_coin.treasury_authorizations (
 create table if not exists source_coin.treasury_allocations (
   allocation_id uuid primary key,
   treasury_account_id uuid not null references source_coin.treasury_accounts(treasury_account_id),
-  destination_account_id uuid not null references source_coin.coin_accounts(account_id),
+  destination_account_id uuid not null references source_coin.accounts(account_id),
   amount_minor bigint not null check (amount_minor > 0),
   authorization_id uuid not null references source_coin.treasury_authorizations(authorization_id),
   policy_id uuid not null references source_coin.supply_policies(policy_id),
-  transaction_id uuid references source_coin.coin_transactions(transaction_id),
+  transaction_id uuid references source_coin.transactions(transaction_id),
   created_at timestamptz not null default now()
 );
 
@@ -79,7 +79,6 @@ alter table source_coin.treasury_allocations enable row level security;
 alter table source_coin.policy_profiles enable row level security;
 alter table source_coin.compliance_decisions enable row level security;
 
--- Default deny for ordinary Supabase clients. Privileged service functions are granted explicitly later.
 revoke all on source_coin.supply_policies from anon, authenticated;
 revoke all on source_coin.treasury_accounts from anon, authenticated;
 revoke all on source_coin.treasury_authorizations from anon, authenticated;
@@ -92,7 +91,7 @@ returns bigint
 language sql
 stable
 security definer
-set search_path = source_coin, public
+set search_path = source_coin, pg_temp
 as $$
   select coalesce(sum(
     case
@@ -101,7 +100,7 @@ as $$
       else 0
     end
   ), 0)::bigint
-  from source_coin.coin_transactions;
+  from source_coin.transactions;
 $$;
 
 revoke all on function source_coin.current_supply_minor() from public, anon, authenticated;
