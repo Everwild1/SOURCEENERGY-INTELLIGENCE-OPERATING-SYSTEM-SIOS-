@@ -47,7 +47,7 @@ class SourceCoinSettlementIncentiveTests(unittest.TestCase):
         self.assertFalse(instruction.can_execute())
 
     def test_contribution_cannot_self_validate(self):
-        with self.assertRaisesRegex(ValueError, "self-validate"):
+        with self.assertRaisesRegex(ValueError, "self-validation is prohibited"):
             ContributionRecord(
                 uuid4(), SETCIdentifier(VALID_ORG_ID),
                 "evidence", "principal-a", "principal-a",
@@ -68,7 +68,7 @@ class SourceCoinSettlementIncentiveTests(unittest.TestCase):
 
     def test_reward_policy_cap_is_enforced(self):
         policy = RewardPolicy(uuid4(), "1.0", 10)
-        with self.assertRaisesRegex(ValueError, "policy cap"):
+        with self.assertRaisesRegex(ValueError, "reward exceeds policy maximum"):
             RewardGrant(
                 uuid4(), uuid4(), SETCIdentifier(VALID_ORG_ID),
                 uuid4(), policy, 11, uuid4(), self.allow_decision(), "auth",
