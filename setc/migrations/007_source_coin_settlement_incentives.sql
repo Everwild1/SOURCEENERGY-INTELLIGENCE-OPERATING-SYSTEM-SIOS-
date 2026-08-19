@@ -22,7 +22,7 @@ create table if not exists source_coin.settlement_instructions (
 
 create table if not exists source_coin.contributions (
   contribution_id uuid primary key,
-  contributor_organization_id text not null check (contributor_organization_id ~ '^SETC-OID-[0-9A-F]{16}$'),
+  contributor_organization_id text not null check (contributor_organization_id ~ '^SETC-OID-[0-9a-f]{32}$'),
   evidence_ref text not null,
   validator_ref text not null,
   contributor_principal_ref text not null,
@@ -44,7 +44,7 @@ create table if not exists source_coin.reward_policies (
 create table if not exists source_coin.reward_grants (
   reward_grant_id uuid primary key,
   contribution_id uuid not null references source_coin.contributions(contribution_id),
-  recipient_organization_id text not null check (recipient_organization_id ~ '^SETC-OID-[0-9A-F]{16}$'),
+  recipient_organization_id text not null check (recipient_organization_id ~ '^SETC-OID-[0-9a-f]{32}$'),
   recipient_account_id uuid not null references source_coin.accounts(account_id),
   reward_policy_id uuid not null references source_coin.reward_policies(reward_policy_id),
   amount_minor bigint not null check (amount_minor > 0),
@@ -68,6 +68,3 @@ revoke all on source_coin.settlement_instructions from anon, authenticated;
 revoke all on source_coin.contributions from anon, authenticated;
 revoke all on source_coin.reward_policies from anon, authenticated;
 revoke all on source_coin.reward_grants from anon, authenticated;
-
--- Economic execution remains delegated to the canonical server-only ledger RPC.
--- Source Blocks and ordinary clients receive no direct balance mutation privilege.
