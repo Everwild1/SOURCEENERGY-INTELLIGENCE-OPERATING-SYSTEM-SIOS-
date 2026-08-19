@@ -1,0 +1,94 @@
+openapi: 3.1.0
+info:
+  title: SETC Source Coin API
+  version: 1.0.0
+  description: Contract-first participant API. Privileged mint, burn, emergency, and custody operations are intentionally excluded.
+servers:
+  - url: /source-coin/v1
+paths:
+  /accounts/{accountId}:
+    get:
+      operationId: getAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Account }
+        '404': { $ref: '#/components/responses/Error' }
+  /accounts/{accountId}/balance:
+    get:
+      operationId: getBalance
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Ledger-derived balance }
+        '404': { $ref: '#/components/responses/Error' }
+  /transfers:
+    post:
+      operationId: createTransfer
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '202': { description: Governed transfer accepted }
+        '409': { $ref: '#/components/responses/Error' }
+  /settlements:
+    post:
+      operationId: createSettlement
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '202': { description: Settlement instruction accepted }
+        '403': { $ref: '#/components/responses/Error' }
+  /rewards:
+    post:
+      operationId: createRewardGrant
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '202': { description: Reward grant accepted for governed processing }
+        '403': { $ref: '#/components/responses/Error' }
+  /compliance/evaluate:
+    post:
+      operationId: evaluateCompliance
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200': { description: Auditable compliance decision }
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 1 }
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: true
+      schema: { type: string, minLength: 1 }
+  responses:
+    Error:
+      description: Stable Source Coin API error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+  schemas:
+    APIError:
+      type: object
+      required: [code, message, correlationId]
+      properties:
+        code:
+          type: string
+          enum: [VALIDATION_FAILED, UNAUTHORIZED, FORBIDDEN, INELIGIBLE, POLICY_DENIED, INSUFFICIENT_FUNDS, DUPLICATE_REQUEST, CONFLICT, EXPIRED, RATE_LIMITED, CONTROL_UNAVAILABLE, INTERNAL_ERROR]
+        message: { type: string }
+        correlationId: { type: string }
+        details: { type: object, additionalProperties: true }
