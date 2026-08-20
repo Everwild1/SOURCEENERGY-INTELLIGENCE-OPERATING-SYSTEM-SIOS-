@@ -29,10 +29,13 @@ jobs:
       - name: Compile CRUDS package
         run: python -m compileall -q setc/cruds
       - name: Run CRUDS tests
-        run: pytest -q tests/test_cruds_domain.py
+        run: pytest -q tests/test_cruds_*.py
       - name: Guard Source Coin authority boundary
         run: |
           ! grep -R -E "(update|insert|delete).*(balance|ledger|treasury|supply)" setc/cruds --include='*.py' --include='*.sql' -i
       - name: Guard legal ownership claims
         run: |
           ! grep -R -E "confers[_ -]?legal[_ -]?(ip[_ -]?)?ownership[[:space:]]*=[[:space:]]*true" setc/cruds tests --include='*.py' --include='*.sql' -i
+      - name: Guard WIM transaction authority
+        run: |
+          ! grep -R -E "(insert|update|delete)[[:space:]]+(into[[:space:]]+)?wim\.(transactions|settlement_requests|source_coin_events)" setc/cruds --include='*.sql' -i
