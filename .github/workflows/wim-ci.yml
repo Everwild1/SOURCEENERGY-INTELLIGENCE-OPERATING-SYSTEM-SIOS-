@@ -1,0 +1,31 @@
+name: WIM Exchange CI
+
+on:
+  pull_request:
+    paths:
+      - 'setc/wim/**'
+      - '.github/workflows/wim-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'setc/wim/**'
+      - '.github/workflows/wim-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  governance-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile WIM package
+        run: python -m compileall -q setc/wim
+      - name: Run WIM tests
+        run: python -m unittest discover -s setc/wim/tests -p 'test_*.py' -v
+      - name: Assert no Source Coin ledger authority in WIM
+        run: |
+          ! grep -R -n -E 'update[[:space:]]+.*(source_coin|ledger|balance|treasury|supply)' setc/wim --include='*.py' --include='*.sql'
