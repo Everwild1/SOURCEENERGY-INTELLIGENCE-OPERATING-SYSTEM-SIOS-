@@ -41,14 +41,12 @@ jobs:
           python -m compileall -q setc/capitalization
           python -m unittest discover -s setc/capitalization/tests -p 'test_*.py' -v
           python setc/capitalization/artifact_checks.py
-      - name: Replace bootstrap transport with implementation
+      - name: Commit implementation without workflow mutation
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .bootstrap
-          rm -f .github/workflows/capitalization-bootstrap.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- .github/workflows/capitalization-ci.yml docs/CAPITALIZATION_BLOCK_IMPLEMENTATION_EPIC.md setc/capitalization .bootstrap .github/workflows/capitalization-bootstrap.yml
+          git add -- docs/CAPITALIZATION_BLOCK_IMPLEMENTATION_EPIC.md setc/capitalization
           git commit -m 'CAP-E01-E10: materialize capitalization control plane'
           git push origin HEAD:feat/capitalization-control-plane
