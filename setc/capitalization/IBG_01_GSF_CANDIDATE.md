@@ -11,12 +11,29 @@ This record reconciles Issue #109 with the canonical Capitalization Block contro
 - Relationship state: `DUE_DILIGENCE`
 - Verification status: `UNVERIFIED`
 - Connectivity status: `NOT_CONNECTED`
+- Strategic ecosystem designation: `STRATEGIC_INSTITUTIONAL_ENABLER`
+- Strategic function: institutional credibility, access facilitation, relationship development, and banking-ecosystem navigation
 - Settlement authority: `NONE`
 - Custody authority: `NONE`
 - Production eligibility: `NO-GO`
 - Public live-network claim: `PROHIBITED`
 
+The strategic ecosystem designation records SourceEnergy's internal assessment that Kai Alexander Ortega / the GSF Digital Banking Platform has been instrumental in helping establish institutional credibility with the U.S. Treasury and major banks represented on the SourceEnergy dashboard. This is a SourceEnergy relationship/contribution assessment, not independent evidence of endorsement, authorization, sponsorship, account ownership, correspondent status, or a regulated relationship with any government agency or financial institution.
+
 The relationship state is advanced only to `DUE_DILIGENCE` because first-party website screenshots now provide specific claims suitable for verification. They are not independent evidence and do not satisfy the `VERIFIED`, `CONTRACTED`, `INTEGRATED`, or `LIVE` gates.
+
+## Strategic institutional-enabler role
+
+GSF is recognized as strategically material to the Capitalization / Empire Block in a non-transactional capacity. The recognized contribution includes credibility development, institutional-access facilitation, relationship navigation, and support for engagement with public-sector and major-bank stakeholders.
+
+This designation is deliberately orthogonal to regulated authority. Strategic contribution may be recognized even while banking relationships, settlement rails, custody arrangements, licences, certifications, accounts, and production connectivity remain under independent diligence.
+
+Accordingly:
+
+- `STRATEGIC_INSTITUTIONAL_ENABLER` must never be interpreted as `BANK`, `SETTLEMENT_BANK`, `CUSTODIAN`, `CORRESPONDENT`, `SPONSOR_BANK`, `REGULATOR_APPROVED`, or `LIVE`.
+- SourceEnergy's statement that GSF helped establish credibility with the U.S. Treasury or dashboard institutions must not be represented as an endorsement or confirmation by those institutions unless independently evidenced.
+- Strategic relationship value does not satisfy IBG-01 verification, IBG-02 account eligibility, IBG-03 payment-route eligibility, or any later settlement-finality control.
+- The strategic designation may inform relationship management and diligence priority, but cannot override evidence, compliance, security, or production gates.
 
 ## First-party claims captured for verification
 
@@ -99,17 +116,18 @@ The contradiction must be resolved before any relationship or account state can 
 
 ## Evidence classification
 
-- Evidence class: `FIRST_PARTY_WEBSITE_SCREENSHOT` plus `INDEPENDENT_PUBLIC_CORROBORATION`.
+- Evidence class: `FIRST_PARTY_WEBSITE_SCREENSHOT` plus `INDEPENDENT_PUBLIC_CORROBORATION` plus `SOURCEENERGY_INTERNAL_RELATIONSHIP_ASSESSMENT`.
 - Screenshot evidence strength: `LOW / ASSERTIONAL`.
 - Independent public corroboration strength: `MEDIUM` for legal-entity registration and BIC ownership only.
-- Suitable use: identify diligence questions, corroborate discrete identifiers, and flag contradictory first-party claims.
-- Unsuitable use: verify GSF bank relationships, licence, certification, account availability, custody, payment execution, settlement finality, or production readiness.
+- Strategic-contribution evidence strength: `INTERNAL / RELATIONSHIP_CONTEXT`; suitable for ecosystem role classification, not regulated-authority verification.
+- Suitable use: identify diligence questions, corroborate discrete identifiers, flag contradictory first-party claims, and record strategic relationship contribution.
+- Unsuitable use: verify government/bank endorsement, GSF bank relationships, licence, certification, account availability, custody, payment execution, settlement finality, or production readiness.
 
 Unknown or unverified legal, regulatory, ownership, SWIFT/BIC relationship, correspondent, deposit-protection, currency, custody, treasury, trade-finance, API, digital-asset, cybersecurity, and business-continuity attributes must remain null/unknown unless supported by independently retained evidence.
 
 ## Promotion gate
 
-GSF may not advance beyond `DUE_DILIGENCE` merely because it appears in this repository or because claims appear on its website. Promotion to `QUALIFIED`, `CONTRACTED`, `INTEGRATED`, or `LIVE` requires the evidence and governance controls defined by the Capitalization Block architecture and Issue #109.
+GSF may not advance beyond `DUE_DILIGENCE` merely because it appears in this repository, because claims appear on its website, or because it is designated a strategic institutional enabler. Promotion to `QUALIFIED`, `CONTRACTED`, `INTEGRATED`, or `LIVE` requires the evidence and governance controls defined by the Capitalization Block architecture, Issue #109, and the settlement-institution verification gate in Issue #115.
 
 `LIVE` additionally requires `PRODUCTION` connectivity, `VERIFIED` status, an evidence reference, and a verification timestamp under `InstitutionStatus`.
 
@@ -141,11 +159,12 @@ Before approval, independently verify as applicable:
 18. ISO 20022 production scope and endpoints; do not treat website `Live` wording as network connectivity evidence.
 19. LEI from the GLEIF authoritative record and exact legal-entity mapping.
 20. PCI DSS scope/attestation and responsibility matrix applicable to GSF's actual card-data environment.
+21. Where SourceEnergy intends to make external claims regarding credibility or introductions involving the U.S. Treasury or named banks, retain appropriate correspondence, meeting records, introductions, engagement artifacts, or other evidence defining the nature and limits of that relationship.
 
 ## IBG-02 / IBG-03 implications
 
-No GSF account may become `ACTIVE / PRODUCTION_ELIGIBLE` under IBG-02 based on these screenshots or the current public-site claims. IBG-03 must reject GSF as an executable payment route while `UNVERIFIED` or `NOT_CONNECTED`, regardless of advertised rails, transfer limits, product pricing, or settlement-bank claims.
+No GSF account may become `ACTIVE / PRODUCTION_ELIGIBLE` under IBG-02 based on website material, internal strategic designation, or relationship contribution alone. IBG-03 must reject GSF as an executable payment route while `UNVERIFIED` or `NOT_CONNECTED`, regardless of advertised rails, transfer limits, product pricing, strategic contribution, or settlement-bank claims.
 
 ## Implementation sequence
 
-This record satisfies the IBG-01 candidate-classification layer and now captures first-party diligence assertions plus independent identifier corroboration and a material settlement-bank contradiction. Follow-on implementation remains sequenced as account/custody registry, payment orchestration, treasury/liquidity, trade finance, and settlement reconciliation. None of those lanes may infer production authority from this candidate record.
+This record satisfies the IBG-01 candidate-classification layer and now captures first-party diligence assertions, independent identifier corroboration, a material settlement-bank contradiction, and SourceEnergy's internal strategic institutional-enabler designation. Follow-on implementation remains sequenced as account/custody registry, payment orchestration, treasury/liquidity, trade finance, and settlement reconciliation. None of those lanes may infer production authority from this candidate record or strategic designation.
