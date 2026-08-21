@@ -33,7 +33,7 @@ The supplied GSF website screenshots state or advertise the following. Every ite
 
 ### Settlement and payment rails
 
-- Claimed settlement bank: `CIMB Bank Berhad`.
+- Claimed settlement bank in supplied screenshots: `CIMB Bank Berhad`.
 - Claimed CIMB BIC: `CIBBMYKL`.
 - Claimed rails/services include SWIFT/MT103, DuitNow, FPX, SEPA, ACH and PACS.008.
 - The site states payment settlement occurs through regulated/sponsor infrastructure and does not present GSF as holding its own BIC or banking licence.
@@ -69,14 +69,43 @@ Readiness, alignment, internal identification, and self-described live status ar
 
 The site markets personal, business and enterprise tiers and advertises multi-currency accounts/wallets, Visa cards, domestic/international transfers, treasury, trade finance/SBLC, wealth/markets, and business transfer limits. These are product claims only. They must not be modeled as available SETC capabilities until the underlying regulated provider, contract, eligibility, limits, custody/settlement structure, and production integration are independently established.
 
+## Independent corroboration performed 2026-08-21
+
+The following items were checked against third-party or independent public sources. This does **not** elevate GSF itself to `VERIFIED`.
+
+### Corroborated facts
+
+- `MAEZ INTERNATIONAL GROUP SDN. BHD.` with registration number `202001042881 (1399202-X)` is independently corroborated by a current Malaysian corporate-information provider, with incorporation dated 24 December 2020. This corroborates the legal-entity name/registration number only; it does not establish that the entity operates GSF under a regulated financial-services authorization.
+- `CIBBMYKL` is independently corroborated as the BIC/SWIFT code of `CIMB Bank Berhad` in Kuala Lumpur, including by SWIFT-published material and CIMB's own remittance documentation.
+- No authoritative Bank Negara Malaysia or PIDM search result was located that identifies `GSF Banking` or `MAEZ INTERNATIONAL GROUP` as a licensed deposit-taking bank or PIDM member during this diligence pass.
+
+### Material contradiction / change requiring resolution
+
+- The supplied screenshots identify `CIMB Bank Berhad (CIBBMYKL)` as the settlement bank.
+- The currently indexed `gsfbanking.com` homepage instead states that settlement runs through `MAEZ International Group at Maybank Islamic (BIC MBBEMYKL)` and references a different technology stack/rail narrative.
+- This creates an unresolved first-party inconsistency over the named settlement institution. Neither the CIMB relationship nor the Maybank Islamic relationship is accepted as verified until supported by bank-issued, contractual, account, API, or other authoritative evidence.
+
+### Diligence disposition
+
+- Legal entity identity / registration number: `PARTIALLY_CORROBORATED`.
+- CIMB BIC ownership: `VERIFIED_AS_CIMB_IDENTIFIER`.
+- GSF-to-CIMB relationship: `UNVERIFIED / CONTRADICTED_BY_CURRENT_SITE`.
+- GSF-to-Maybank-Islamic relationship: `CLAIMED_ON_CURRENT_SITE / UNVERIFIED`.
+- GSF banking licence: `NO EVIDENCE FOUND`; first-party site itself states no banking licence is held.
+- GSF deposit protection: `NO EVIDENCE FOUND`; first-party site states no PIDM/FSCS cover.
+- Named payment rails, sponsor providers, certifications, custody, SBLC/trade-finance capability, nostro positions and production connectivity: `UNVERIFIED`.
+
+The contradiction must be resolved before any relationship or account state can advance beyond diligence. A changed website claim is not itself proof of migration from one settlement bank to another.
+
 ## Evidence classification
 
-- Evidence class: `FIRST_PARTY_WEBSITE_SCREENSHOT`
-- Evidence strength: `LOW / ASSERTIONAL`
-- Suitable use: identify diligence questions and candidate/provider names.
-- Unsuitable use: verify licence, BIC ownership, bank relationship, certification, account availability, custody, payment execution, settlement finality, or production readiness.
+- Evidence class: `FIRST_PARTY_WEBSITE_SCREENSHOT` plus `INDEPENDENT_PUBLIC_CORROBORATION`.
+- Screenshot evidence strength: `LOW / ASSERTIONAL`.
+- Independent public corroboration strength: `MEDIUM` for legal-entity registration and BIC ownership only.
+- Suitable use: identify diligence questions, corroborate discrete identifiers, and flag contradictory first-party claims.
+- Unsuitable use: verify GSF bank relationships, licence, certification, account availability, custody, payment execution, settlement finality, or production readiness.
 
-Unknown or unverified legal, regulatory, ownership, SWIFT/BIC, correspondent, deposit-protection, currency, custody, treasury, trade-finance, API, digital-asset, cybersecurity, and business-continuity attributes must remain null/unknown unless supported by independently retained evidence.
+Unknown or unverified legal, regulatory, ownership, SWIFT/BIC relationship, correspondent, deposit-protection, currency, custody, treasury, trade-finance, API, digital-asset, cybersecurity, and business-continuity attributes must remain null/unknown unless supported by independently retained evidence.
 
 ## Promotion gate
 
@@ -95,7 +124,7 @@ Before approval, independently verify as applicable:
 1. Exact legal entity and jurisdiction through SSM or equivalent authoritative registry.
 2. Regulator, licence status, and authorized activities; confirm the site's explicit non-bank status.
 3. Deposit-taking authority and deposit-protection status.
-4. Whether `CIBBMYKL` belongs to CIMB and whether GSF has an actual authorized settlement/correspondent relationship with CIMB.
+4. Resolve whether CIMB, Maybank Islamic, or another institution is the actual current settlement/sponsor bank; retain bank-issued or contractual evidence.
 5. Ownership and beneficial ownership.
 6. Audited financial/capital information.
 7. AML/KYC/sanctions controls and accountable regulated parties.
@@ -115,8 +144,8 @@ Before approval, independently verify as applicable:
 
 ## IBG-02 / IBG-03 implications
 
-No GSF account may become `ACTIVE / PRODUCTION_ELIGIBLE` under IBG-02 based on these screenshots. IBG-03 must reject GSF as an executable payment route while `UNVERIFIED` or `NOT_CONNECTED`, regardless of advertised rails, transfer limits, product pricing, or settlement-bank claims.
+No GSF account may become `ACTIVE / PRODUCTION_ELIGIBLE` under IBG-02 based on these screenshots or the current public-site claims. IBG-03 must reject GSF as an executable payment route while `UNVERIFIED` or `NOT_CONNECTED`, regardless of advertised rails, transfer limits, product pricing, or settlement-bank claims.
 
 ## Implementation sequence
 
-This record satisfies the IBG-01 candidate-classification layer and now captures first-party diligence assertions. Follow-on implementation remains sequenced as account/custody registry, payment orchestration, treasury/liquidity, trade finance, and settlement reconciliation. None of those lanes may infer production authority from this candidate record.
+This record satisfies the IBG-01 candidate-classification layer and now captures first-party diligence assertions plus independent identifier corroboration and a material settlement-bank contradiction. Follow-on implementation remains sequenced as account/custody registry, payment orchestration, treasury/liquidity, trade finance, and settlement reconciliation. None of those lanes may infer production authority from this candidate record.
