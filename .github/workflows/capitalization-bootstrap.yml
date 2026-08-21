@@ -46,9 +46,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m compileall -q setc/capitalization
-          python -m unittest discover -s setc/capitalization/tests -p 'test_*.py' -v
-          python setc/capitalization/artifact_checks.py
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          for path in Path('setc/capitalization').rglob('*.py'):
+              ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+          PY
+          python -B -m unittest discover -s setc/capitalization/tests -p 'test_*.py' -v
+          python -B setc/capitalization/artifact_checks.py
       - name: Commit implementation when newly materialized
         shell: bash
         run: |
