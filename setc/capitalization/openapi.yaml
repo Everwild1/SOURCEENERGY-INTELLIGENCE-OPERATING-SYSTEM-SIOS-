@@ -1,0 +1,1072 @@
+openapi: 3.1.0
+info:
+  title: SourceEnergy Capitalization Block API
+  version: 1.0.0
+  summary: Governed capital, treasury, interbank, settlement, and public-directory contracts.
+  description: |
+    Proposed API contract for the SourceEnergy Capitalization Block / Empire Block.
+    SETC/SIOS owns orchestration and canonical institutional identity; WIM owns
+    commercial workflow; Source Coin owns its ledger and finality; regulated
+    external fiat rails own fiat finality. This API does not create a banking
+    relationship, custody authority, regulatory permission, or external settlement
+    finality.
+  x-production-status: proposed-no-go
+  x-authority-boundary: orchestration-and-evidence-only
+servers:
+  - url: /
+tags:
+  - name: Public Directory
+  - name: Capital Lineage
+  - name: Treasury
+  - name: Settlement
+  - name: Governance
+  - name: Integrations
+paths:
+  /v1/public/network-directory:
+    get:
+      tags: [Public Directory]
+      operationId: listPublicNetworkDirectory
+      summary: List public-safe institutional registry entries.
+      description: |
+        Returns only approved registry metadata. A registry-target record does not
+        imply participation, contract, integration, account access, or production
+        connectivity.
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/Region'
+        - $ref: '#/components/parameters/PublicClaimStatus'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Public network directory page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicNetworkDirectoryPage'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/public/dashboard-metrics:
+    get:
+      tags: [Public Directory]
+      operationId: listPublicDashboardMetrics
+      summary: List non-financial public dashboard metrics.
+      description: Treasury balances, commitments, exposures, and settlement amounts are excluded.
+      responses:
+        '200':
+          description: Published public metrics.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicDashboardMetric'
+  /v1/public/contracts:
+    get:
+      tags: [Public Directory]
+      operationId: listPublicApiContracts
+      summary: List active or deprecated public contract versions.
+      responses:
+        '200':
+          description: Public contract-version records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiContractVersion'
+  /v1/capitalization/commitments/{ecid}:
+    get:
+      tags: [Capital Lineage]
+      operationId: getCapitalCommitment
+      summary: Retrieve one governed capital commitment and lineage summary.
+      security:
+        - internalBearer: []
+      parameters:
+        - $ref: '#/components/parameters/Ecid'
+      responses:
+        '200':
+          description: Commitment and lineage summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapitalCommitment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/capitalization/treasury/positions:
+    get:
+      tags: [Treasury]
+      operationId: listTreasuryPositions
+      summary: List authorized treasury position snapshots.
+      description: Values are sourced observations and must include evidence authority and as-of time.
+      security:
+        - internalBearer: []
+      parameters:
+        - name: accountReference
+          in: query
+          schema:
+            type: string
+        - name: asOf
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Authorized position snapshots.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TreasuryPosition'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/capitalization/settlement-instructions:
+    post:
+      tags: [Settlement]
+      operationId: createSettlementInstruction
+      summary: Create a draft, replay-safe settlement instruction.
+      description: Creation does not approve, submit, execute, or settle the instruction.
+      security:
+        - internalBearer: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSettlementInstructionRequest'
+      responses:
+        '201':
+          description: Draft instruction created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettlementInstruction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/capitalization/settlement-instructions/{instructionReference}/submit:
+    post:
+      tags: [Settlement]
+      operationId: submitSettlementInstruction
+      summary: Submit an approved and compliance-cleared settlement instruction.
+      description: |
+        Production submission is rejected while the PRODUCTION_SETTLEMENT gate is
+        disabled. Submission still does not confer finality.
+      security:
+        - internalBearer: []
+      parameters:
+        - $ref: '#/components/parameters/InstructionReference'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitSettlementInstructionRequest'
+      responses:
+        '200':
+          description: Instruction submitted to the approved adapter or domain.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettlementInstruction'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /v1/capitalization/reconciliations:
+    post:
+      tags: [Settlement]
+      operationId: createReconciliation
+      summary: Record a reconciliation against authoritative confirmation evidence.
+      security:
+        - internalBearer: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReconciliationRequest'
+      responses:
+        '201':
+          description: Reconciliation record created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reconciliation'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /v1/capitalization/public-projection/refresh:
+    post:
+      tags: [Governance]
+      operationId: refreshPublicNetworkProjection
+      summary: Refresh the public-safe network directory and metrics.
+      description: Server-side operation. It cannot bypass the public live-claim release gate.
+      security:
+        - internalBearer: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Projection refresh counts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectionRefreshResult'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/capitalization/release-gates/{gateCode}/authorize:
+    post:
+      tags: [Governance]
+      operationId: authorizeReleaseGate
+      summary: Enable or disable a governed release gate with evidence.
+      description: Infrastructure readiness alone is not sufficient authorization.
+      security:
+        - internalBearer: []
+      parameters:
+        - $ref: '#/components/parameters/GateCode'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizeReleaseGateRequest'
+      responses:
+        '200':
+          description: Gate state changed and history recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseGate'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /v1/integrations/wim/settlement-requests:
+    post:
+      tags: [Integrations]
+      operationId: receiveWimSettlementRequest
+      summary: Receive a WIM transaction settlement-orchestration request.
+      description: WIM remains authoritative for trade workflow; this endpoint does not rewrite WIM trade state.
+      security:
+        - mutualTLS: []
+          adapterSignature: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/CausationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WimSettlementRequestEnvelope'
+      responses:
+        '202':
+          description: Request accepted for governed assessment; no settlement implied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedIntegrationRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /v1/integrations/source-coin/confirmations:
+    post:
+      tags: [Integrations]
+      operationId: receiveSourceCoinConfirmation
+      summary: Receive an authoritative Source Coin domain confirmation.
+      description: Source Coin remains authoritative for ledger effects, balances, supply, treasury issuance, and finality.
+      security:
+        - mutualTLS: []
+          adapterSignature: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/CausationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceCoinConfirmationEnvelope'
+      responses:
+        '202':
+          description: Confirmation accepted for validation and reconciliation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedIntegrationRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /v1/integrations/fiat/confirmations:
+    post:
+      tags: [Integrations]
+      operationId: receiveFiatRailConfirmation
+      summary: Receive confirmation from an approved external fiat adapter.
+      description: The identified regulated rail or provider remains authoritative for fiat finality.
+      security:
+        - mutualTLS: []
+          adapterSignature: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/CausationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FiatConfirmationEnvelope'
+      responses:
+        '202':
+          description: Confirmation accepted for validation and reconciliation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedIntegrationRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+components:
+  securitySchemes:
+    internalBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: SETC/SIOS-issued staff or service token with policy-scoped authorization.
+    mutualTLS:
+      type: mutualTLS
+      description: Mutual TLS required for approved system adapters.
+    adapterSignature:
+      type: apiKey
+      in: header
+      name: X-SourceEnergy-Signature
+      description: Detached request signature validated against the approved adapter identity.
+  parameters:
+    Search:
+      name: q
+      in: query
+      schema:
+        type: string
+        maxLength: 200
+    Region:
+      name: region
+      in: query
+      schema:
+        type: string
+        maxLength: 32
+    PublicClaimStatus:
+      name: publicClaimStatus
+      in: query
+      schema:
+        $ref: '#/components/schemas/PublicClaimStatus'
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    Ecid:
+      name: ecid
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^ECID-[0-9]{4}-[0-9]{9}$'
+    InstructionReference:
+      name: instructionReference
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    GateCode:
+      name: gateCode
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [PRODUCTION_SETTLEMENT, PUBLIC_LIVE_NETWORK_CLAIMS]
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 200
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
+    CausationId:
+      name: X-Causation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
+  responses:
+    BadRequest:
+      description: Request is syntactically or semantically invalid.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Authentication is required or invalid.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Policy, role, evidence, separation-of-duties, or release-gate authorization failed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Requested record was not found.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Idempotency, lifecycle, replay, or state conflict.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unprocessable:
+      description: Governance or domain invariants were not satisfied.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    RateLimited:
+      description: Request rate limit exceeded.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    PublicClaimStatus:
+      type: string
+      enum: [REGISTRY_TARGET, EVIDENCE_BACKED_NON_LIVE, VERIFIED_LIVE]
+    PublicNetworkDirectoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - directoryEntryId
+        - institutionReference
+        - institutionDisplayName
+        - institutionType
+        - sourceenergyNodeId
+        - relationshipState
+        - connectivityStatus
+        - verificationStatus
+        - publicClaimStatus
+        - relationshipLabel
+        - connectivityLabel
+        - disclosure
+      properties:
+        directoryEntryId:
+          type: string
+        institutionReference:
+          type: string
+        institutionDisplayName:
+          type: string
+        institutionType:
+          type: string
+        jurisdictionCode:
+          type: [string, 'null']
+        regionCode:
+          type: [string, 'null']
+        sourceenergyNodeId:
+          type: string
+        dominionCubeId:
+          type: [string, 'null']
+          description: SourceEnergy internal identifier.
+        relayCode:
+          type: [string, 'null']
+          description: SourceEnergy internal identifier.
+        layerNumber:
+          type: [integer, 'null']
+        operationalRole:
+          type: [string, 'null']
+        relationshipState:
+          type: string
+        connectivityStatus:
+          type: string
+        verificationStatus:
+          type: string
+        publicClaimStatus:
+          $ref: '#/components/schemas/PublicClaimStatus'
+        relationshipLabel:
+          type: string
+        connectivityLabel:
+          type: string
+        lastVerifiedAt:
+          type: [string, 'null']
+          format: date-time
+        disclosure:
+          type: string
+    PublicNetworkDirectoryPage:
+      type: object
+      additionalProperties: false
+      required: [items, disclosure]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicNetworkDirectoryEntry'
+        nextCursor:
+          type: [string, 'null']
+        disclosure:
+          type: string
+    PublicDashboardMetric:
+      type: object
+      additionalProperties: false
+      required: [metricCode, metricName, measurementKind, asOf, disclosure]
+      properties:
+        metricCode:
+          type: string
+        metricName:
+          type: string
+        numericValue:
+          type: [number, 'null']
+        textValue:
+          type: [string, 'null']
+        unit:
+          type: [string, 'null']
+        measurementKind:
+          type: string
+          enum: [SYSTEM_DERIVED, OBSERVED, VERIFIED]
+        asOf:
+          type: string
+          format: date-time
+        disclosure:
+          type: string
+    ApiContractVersion:
+      type: object
+      required: [contractName, contractVersion, status, documentationReference, authorityBoundary]
+      properties:
+        contractName:
+          type: string
+        contractVersion:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, DEPRECATED]
+        documentationReference:
+          type: string
+        authorityBoundary:
+          type: string
+    Money:
+      type: object
+      additionalProperties: false
+      required: [amount, assetCode]
+      properties:
+        amount:
+          type: string
+          pattern: '^[0-9]+(?:\.[0-9]{1,12})?$'
+        assetCode:
+          type: string
+          pattern: '^[A-Z0-9][A-Z0-9._-]{1,11}$'
+    CapitalCommitment:
+      type: object
+      required: [ecid, commitmentReference, sourceReference, money, state]
+      properties:
+        ecid:
+          type: string
+          pattern: '^ECID-[0-9]{4}-[0-9]{9}$'
+        commitmentReference:
+          type: string
+        sourceReference:
+          type: string
+        money:
+          $ref: '#/components/schemas/Money'
+        state:
+          type: string
+        agreementReference:
+          type: [string, 'null']
+        evidenceReference:
+          type: [string, 'null']
+        lineage:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineageEvent'
+    LineageEvent:
+      type: object
+      required: [objectType, objectReference, eventType, occurredAt]
+      properties:
+        objectType:
+          type: string
+        objectReference:
+          type: string
+        eventType:
+          type: string
+        evidenceReference:
+          type: [string, 'null']
+        occurredAt:
+          type: string
+          format: date-time
+    TreasuryPosition:
+      type: object
+      required:
+        - accountReference
+        - asOf
+        - bookBalance
+        - availableBalance
+        - valuationAssetCode
+        - sourceAuthority
+        - evidenceReference
+      properties:
+        accountReference:
+          type: string
+        asOf:
+          type: string
+          format: date-time
+        bookBalance:
+          type: string
+        availableBalance:
+          type: string
+        restrictedBalance:
+          type: string
+        committedBalance:
+          type: string
+        encumberedBalance:
+          type: string
+        valuationAssetCode:
+          type: string
+        sourceAuthority:
+          type: string
+        evidenceReference:
+          type: string
+        reconciliationStatus:
+          type: string
+    CreateSettlementInstructionRequest:
+      type: object
+      additionalProperties: false
+      required: [instructionReference, railType, environment, money, createdByActor]
+      properties:
+        instructionReference:
+          type: string
+        commitmentId:
+          type: [string, 'null']
+          format: uuid
+        allocationId:
+          type: [string, 'null']
+          format: uuid
+        deploymentId:
+          type: [string, 'null']
+          format: uuid
+        wimTransactionId:
+          type: [string, 'null']
+          format: uuid
+        corridorId:
+          type: [string, 'null']
+          format: uuid
+        originTreasuryAccountId:
+          type: [string, 'null']
+          format: uuid
+        destinationTreasuryAccountId:
+          type: [string, 'null']
+          format: uuid
+        railType:
+          type: string
+          enum: [FIAT_EXTERNAL, SOURCE_COIN, INTERNAL_BOOK_TRANSFER]
+        environment:
+          type: string
+          enum: [SANDBOX, TEST, CERTIFICATION, PRODUCTION]
+        money:
+          $ref: '#/components/schemas/Money'
+        createdByActor:
+          type: string
+        requestedExecutionAt:
+          type: [string, 'null']
+          format: date-time
+        expiresAt:
+          type: [string, 'null']
+          format: date-time
+    SubmitSettlementInstructionRequest:
+      type: object
+      additionalProperties: false
+      required: [approvalRequestId, complianceCaseId]
+      properties:
+        approvalRequestId:
+          type: string
+          format: uuid
+        complianceCaseId:
+          type: string
+          format: uuid
+        externalProviderReference:
+          type: [string, 'null']
+        sourceCoinRequestReference:
+          type: [string, 'null']
+        evidenceReference:
+          type: string
+    SettlementInstruction:
+      type: object
+      required:
+        - instructionReference
+        - railType
+        - environment
+        - money
+        - settlementStatus
+        - correlationId
+        - authorityBoundary
+      properties:
+        instructionReference:
+          type: string
+        railType:
+          type: string
+        environment:
+          type: string
+        money:
+          $ref: '#/components/schemas/Money'
+        settlementStatus:
+          type: string
+        correlationId:
+          type: string
+        finalityAuthority:
+          type: [string, 'null']
+        authoritativeConfirmationReference:
+          type: [string, 'null']
+        settledAt:
+          type: [string, 'null']
+          format: date-time
+        authorityBoundary:
+          type: string
+    CreateReconciliationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - reconciliationReference
+        - settlementInstructionId
+        - confirmationId
+        - instructedAmount
+        - confirmedAmount
+        - assetCode
+        - sourceAuthority
+        - performedByActor
+        - evidenceReference
+      properties:
+        reconciliationReference:
+          type: string
+        settlementInstructionId:
+          type: string
+          format: uuid
+        confirmationId:
+          type: string
+          format: uuid
+        instructedAmount:
+          type: string
+        confirmedAmount:
+          type: string
+        assetCode:
+          type: string
+        sourceAuthority:
+          type: string
+        performedByActor:
+          type: string
+        evidenceReference:
+          type: string
+    Reconciliation:
+      type: object
+      required: [reconciliationReference, reconciliationStatus, assetCode]
+      properties:
+        reconciliationReference:
+          type: string
+        reconciliationStatus:
+          type: string
+        instructedAmount:
+          type: string
+        confirmedAmount:
+          type: [string, 'null']
+        varianceAmount:
+          type: [string, 'null']
+        assetCode:
+          type: string
+        reconciledAt:
+          type: [string, 'null']
+          format: date-time
+    ProjectionRefreshResult:
+      type: object
+      required: [directoryEntryCount, evidenceBackedCount, verifiedLiveCount]
+      properties:
+        directoryEntryCount:
+          type: integer
+        evidenceBackedCount:
+          type: integer
+        verifiedLiveCount:
+          type: integer
+    AuthorizeReleaseGateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - enabled
+        - authorizationReference
+        - evidenceReference
+        - authorizedByActor
+        - rationale
+      properties:
+        enabled:
+          type: boolean
+        authorizationReference:
+          type: string
+          minLength: 1
+        evidenceReference:
+          type: string
+          minLength: 1
+        authorizedByActor:
+          type: string
+          minLength: 1
+        rationale:
+          type: string
+          minLength: 1
+    ReleaseGate:
+      type: object
+      required: [gateCode, enabled, version]
+      properties:
+        gateCode:
+          type: string
+        enabled:
+          type: boolean
+        authorizationReference:
+          type: [string, 'null']
+        evidenceReference:
+          type: [string, 'null']
+        authorizedByActor:
+          type: [string, 'null']
+        authorizedAt:
+          type: [string, 'null']
+          format: date-time
+        rationale:
+          type: [string, 'null']
+        version:
+          type: integer
+    IntegrationEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - contractName
+        - contractVersion
+        - eventId
+        - correlationId
+        - producer
+        - occurredAt
+        - payload
+      properties:
+        contractName:
+          type: string
+        contractVersion:
+          type: string
+          const: '1.0'
+        eventId:
+          type: string
+          format: uuid
+        correlationId:
+          type: string
+        causationId:
+          type: [string, 'null']
+        producer:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        payload:
+          type: object
+    WimSettlementRequestEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/IntegrationEnvelope'
+        - type: object
+          properties:
+            contractName:
+              const: capitalization.wim.settlement-requested
+            producer:
+              const: WIM
+            payload:
+              $ref: '#/components/schemas/WimSettlementRequestPayload'
+    WimSettlementRequestPayload:
+      type: object
+      additionalProperties: false
+      required: [wimTransactionId, money, buyerOrganizationId, sellerOrganizationId]
+      properties:
+        wimTransactionId:
+          type: string
+          format: uuid
+        money:
+          $ref: '#/components/schemas/Money'
+        buyerOrganizationId:
+          type: string
+          format: uuid
+        sellerOrganizationId:
+          type: string
+          format: uuid
+        tradeCorridorId:
+          type: [string, 'null']
+          format: uuid
+        complianceReference:
+          type: [string, 'null']
+    SourceCoinConfirmationEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/IntegrationEnvelope'
+        - type: object
+          properties:
+            contractName:
+              const: capitalization.source-coin.confirmed
+            producer:
+              const: SOURCE_COIN_DOMAIN
+            payload:
+              $ref: '#/components/schemas/SourceCoinConfirmationPayload'
+    SourceCoinConfirmationPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - settlementInstructionReference
+        - sourceCoinRequestReference
+        - sourceCoinConfirmationReference
+        - confirmationStatus
+        - confirmedAt
+        - evidenceReference
+      properties:
+        settlementInstructionReference:
+          type: string
+        sourceCoinRequestReference:
+          type: string
+        sourceCoinConfirmationReference:
+          type: string
+        confirmationStatus:
+          type: string
+          enum: [ACCEPTED, SETTLED, FAILED, REVERSED, REJECTED]
+        money:
+          $ref: '#/components/schemas/Money'
+        confirmedAt:
+          type: string
+          format: date-time
+        evidenceReference:
+          type: string
+    FiatConfirmationEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/IntegrationEnvelope'
+        - type: object
+          properties:
+            contractName:
+              const: capitalization.fiat.confirmed
+            payload:
+              $ref: '#/components/schemas/FiatConfirmationPayload'
+    FiatConfirmationPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - settlementInstructionReference
+        - providerReference
+        - confirmationReference
+        - finalityAuthority
+        - confirmationStatus
+        - confirmedAt
+        - evidenceReference
+      properties:
+        settlementInstructionReference:
+          type: string
+        providerReference:
+          type: string
+        confirmationReference:
+          type: string
+        finalityAuthority:
+          type: string
+          not:
+            const: CAPITALIZATION_BLOCK
+        confirmationStatus:
+          type: string
+          enum: [ACCEPTED, SETTLED, FAILED, REVERSED, REJECTED]
+        money:
+          $ref: '#/components/schemas/Money'
+        confirmedAt:
+          type: string
+          format: date-time
+        evidenceReference:
+          type: string
+    AcceptedIntegrationRequest:
+      type: object
+      required: [eventId, processingStatus, authorityBoundary]
+      properties:
+        eventId:
+          type: string
+        processingStatus:
+          type: string
+          enum: [RECEIVED, DUPLICATE]
+        authorityBoundary:
+          type: string
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, detail, correlationId]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        code:
+          type: string
+        detail:
+          type: string
+        correlationId:
+          type: string
+        evidenceRequired:
+          type: boolean
