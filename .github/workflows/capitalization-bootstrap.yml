@@ -7,18 +7,22 @@ on:
     paths:
       - '.bootstrap/**'
       - '.github/workflows/capitalization-bootstrap.yml'
+      - 'setc/capitalization/**'
+      - 'docs/CAPITALIZATION_BLOCK_IMPLEMENTATION_EPIC.md'
   pull_request:
     branches:
       - main
     paths:
       - '.bootstrap/**'
       - '.github/workflows/capitalization-bootstrap.yml'
+      - 'setc/capitalization/**'
+      - 'docs/CAPITALIZATION_BLOCK_IMPLEMENTATION_EPIC.md'
 
 permissions:
   contents: write
 
 jobs:
-  materialize:
+  materialize-or-validate:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -26,25 +30,33 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref || github.ref_name }}
-      - name: Reconstruct and verify patch
+      - name: Materialize implementation if absent
         shell: bash
         run: |
           set -euo pipefail
+          if [ -f setc/capitalization/domain.py ]; then
+            echo 'Capitalization implementation already materialized; skipping bootstrap patch.'
+            exit 0
+          fi
           cat .bootstrap/patch.part-* | base64 --decode | gzip --decompress > /tmp/capitalization.patch
           echo 'd668ea649fd38b3aa6e01ba4eae1d60cbe608b01514434f837b27e21760cbfc8  /tmp/capitalization.patch' | sha256sum --check --strict
           git apply --check /tmp/capitalization.patch
           git apply /tmp/capitalization.patch
-      - name: Validate materialized implementation
+      - name: Validate capitalization implementation
         shell: bash
         run: |
           set -euo pipefail
           python -m compileall -q setc/capitalization
           python -m unittest discover -s setc/capitalization/tests -p 'test_*.py' -v
           python setc/capitalization/artifact_checks.py
-      - name: Commit implementation without workflow mutation
+      - name: Commit implementation when newly materialized
         shell: bash
         run: |
           set -euo pipefail
+          if git diff --quiet -- docs/CAPITALIZATION_BLOCK_IMPLEMENTATION_EPIC.md setc/capitalization; then
+            echo 'No materialization commit required.'
+            exit 0
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -- docs/CAPITALIZATION_BLOCK_IMPLEMENTATION_EPIC.md setc/capitalization
