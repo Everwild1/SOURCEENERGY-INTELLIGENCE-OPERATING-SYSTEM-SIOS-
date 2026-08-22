@@ -47,7 +47,9 @@ jobs:
           forbidden = re.compile(r"\b(raw_cardiac|raw_ecg|raw_ppg|cardiac_signal|ecg_signal|ppg_signal)\b", re.I)
           for path in Path("supabase/migrations").glob("*heartbeat*.sql"):
               for line_number, line in enumerate(path.read_text().splitlines(), 1):
-                  code = line.split("--", 1)[0]
-                  if forbidden.search(code):
+                  stripped = line.strip()
+                  if not stripped or stripped.startswith("--") or stripped.lower().startswith("comment on "):
+                      continue
+                  if forbidden.search(line):
                       raise SystemExit(f"Forbidden raw biometric storage token: {path}:{line_number}")
           PY
