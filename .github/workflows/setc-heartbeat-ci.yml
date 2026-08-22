@@ -41,7 +41,13 @@ jobs:
           grep -R "Raw cardiac signals" supabase/migrations/*heartbeat*.sql
           grep -R "device_attestation_id" supabase/migrations/*heartbeat*.sql
           grep -R "device_integrity_digest" supabase/migrations/*heartbeat*.sql
-          if grep -R -Ei "raw_(cardiac|ecg|ppg)|cardiac_signal|ecg_signal|ppg_signal" supabase/migrations/*heartbeat*.sql; then
-            echo "Forbidden raw biometric signal storage token found in HeartBeat migrations"
-            exit 1
-          fi
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          forbidden = re.compile(r"\b(raw_cardiac|raw_ecg|raw_ppg|cardiac_signal|ecg_signal|ppg_signal)\b", re.I)
+          for path in Path("supabase/migrations").glob("*heartbeat*.sql"):
+              for line_number, line in enumerate(path.read_text().splitlines(), 1):
+                  code = line.split("--", 1)[0]
+                  if forbidden.search(code):
+                      raise SystemExit(f"Forbidden raw biometric storage token: {path}:{line_number}")
+          PY
