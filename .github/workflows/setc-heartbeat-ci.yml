@@ -39,3 +39,9 @@ jobs:
           grep -R "revoke all" supabase/migrations/*heartbeat*.sql
           grep -R "service_role" supabase/migrations/*heartbeat*.sql
           grep -R "Raw cardiac signals" supabase/migrations/*heartbeat*.sql
+          grep -R "device_attestation_id" supabase/migrations/*heartbeat*.sql
+          grep -R "device_integrity_digest" supabase/migrations/*heartbeat*.sql
+          if grep -R -Ei "raw_(cardiac|ecg|ppg)|cardiac_signal|ecg_signal|ppg_signal" supabase/migrations/*heartbeat*.sql; then
+            echo "Forbidden raw biometric signal storage token found in HeartBeat migrations"
+            exit 1
+          fi
