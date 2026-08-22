@@ -1,0 +1,20 @@
+create table if not exists dhn_ops.pilot_runs (
+  pilot_run_id uuid primary key default gen_random_uuid(), pilot_code text not null unique, scope text not null, environment text not null default 'production_controlled_pilot',
+  status text not null default 'planned' check (status in ('planned','active','passed','failed','suspended','closed')), release_decision text check (release_decision in ('go','no_go','conditional_go')),
+  participant_limit integer not null default 25 check (participant_limit > 0), started_at timestamptz, completed_at timestamptz, governance_metadata jsonb not null default '{}'::jsonb, created_at timestamptz not null default now()
+);
+create table if not exists dhn_ops.pilot_acceptance_results (
+  pilot_acceptance_result_id uuid primary key default gen_random_uuid(), pilot_run_id uuid not null references dhn_ops.pilot_runs(pilot_run_id) on delete cascade,
+  criterion_code text not null, domain text not null, status text not null default 'not_run' check (status in ('pass','fail','blocked','not_run')),
+  expected_outcome text not null, observed_outcome text, evidence jsonb not null default '{}'::jsonb, evaluated_at timestamptz, unique(pilot_run_id,criterion_code)
+);
+alter table dhn_ops.pilot_runs enable row level security;
+alter table dhn_ops.pilot_acceptance_results enable row level security;
+revoke all privileges on dhn_ops.pilot_runs,dhn_ops.pilot_acceptance_results from public,anon,authenticated;
+grant all privileges on dhn_ops.pilot_runs,dhn_ops.pilot_acceptance_results to service_role;
+create policy pilot_runs_service_role on dhn_ops.pilot_runs for all to service_role using (true) with check (true);
+create policy pilot_results_service_role on dhn_ops.pilot_acceptance_results for all to service_role using (true) with check (true);
+insert into dhn_ops.pilot_runs(pilot_code,scope,status,release_decision,participant_limit,governance_metadata) values('DHN-E12-PILOT-01','Controlled pilot of DHN identity, HeartBeatID, consent, RENCAT telemetry, audit/attestation and settlement boundaries','planned','conditional_go',25,jsonb_build_object('requires_repository_parity',true,'raw_phi_in_ops_evidence',false,'raw_biometric_in_ops_evidence',false,'raw_telemetry_in_ops_evidence',false)) on conflict (pilot_code) do nothing;
+insert into dhn_ops.pilot_acceptance_results(pilot_run_id,criterion_code,domain,expected_outcome)
+select p.pilot_run_id,v.code,v.domain,v.expected from dhn_ops.pilot_runs p cross join (values
+('E12-ID-01','identity','Participant resolves to one active scoped DHN identity mapping and credential.'),('E12-HB-01','heartbeatid','Valid trusted assertion produces governed verification; degraded or invalid assertion denies or requires step-up.'),('E12-CONSENT-01','consent','Purpose-bound active consent permits only in-scope action; revoked or missing consent denies.'),('E12-REN-01','rencat','Trusted reference-only telemetry validates; raw payload, ambiguous identity, invalid schema or untrusted source quarantines/rejects.'),('E12-CLIN-01','clinical','Clinical interoperability exchange requires an E03 authorization decision and stores references rather than unrestricted PHI payloads.'),('E12-AUD-01','audit_attestation','Pilot security-sensitive actions produce correlated audit evidence and privacy-minimized integrity attestations.'),('E12-LEDGER-01','ledger','Ledger boundary permits digest-only privacy-minimized anchor requests and performs no automatic medical-data ledger write.'),('E12-SETTLE-01','settlement','Settlement boundary produces economic references only, rejects prohibited health/biometric metadata and has no self-declared economic finality.'),('E12-SEC-01','security','All DHN pilot tables remain RLS governed and all DHN Edge Functions remain JWT protected.'),('E12-REPO-01','release','Authoritative production migration history is reconciled to the SIOS repository before final GO.')) as v(code,domain,expected) where p.pilot_code='DHN-E12-PILOT-01' on conflict (pilot_run_id,criterion_code) do nothing;
