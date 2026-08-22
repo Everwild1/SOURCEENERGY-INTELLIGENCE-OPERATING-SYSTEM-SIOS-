@@ -4,10 +4,13 @@ from uuid import uuid4
 import pytest
 
 from setc.heartbeat.authorization import (
+    AuthorizationContext,
     HardwareSigningRequest,
+    HeartBeatAuditAttestation,
     PolicyDecision,
     PolicyEffect,
 )
+from setc.heartbeat.issuance import AssertionIntegrityBinding
 from setc.heartbeat.models import (
     HeartBeatAssertion,
     HeartBeatDecision,
@@ -37,6 +40,37 @@ def _assertion(**overrides):
     return HeartBeatAssertion(**values)
 
 
+def _binding():
+    return AssertionIntegrityBinding(
+        device_reference="device-1",
+        sensor_reference="sensor-1",
+        device_attestation_reference="attestation-1",
+        device_integrity_digest="sha256:device",
+        device_trust_policy_version="device-policy-v1",
+    )
+
+
+def _decision(effect=PolicyEffect.ALLOW):
+    context = AuthorizationContext(
+        actor_id="actor-1",
+        assertion_id=uuid4(),
+        correlation_id="corr-1",
+        requested_action="settlement.release",
+        resource_reference="settlement-1",
+        role_references=("settlement-authorizer",),
+        delegation_references=(),
+        policy_version="policy-v1",
+        integrity_binding=_binding(),
+    )
+    return PolicyDecision.from_context(
+        context,
+        decision_id=uuid4(),
+        effect=effect,
+        decided_at=datetime.now(timezone.utc),
+        reason_code="authorized" if effect is PolicyEffect.ALLOW else "insufficient_authority",
+    )
+
+
 def test_assertion_accepts_bounded_confidence():
     assertion = _assertion()
     assert assertion.match_confidence == 0.99
@@ -54,38 +88,17 @@ def test_assertion_rejects_nonpositive_lifetime():
 
 
 def test_denied_policy_cannot_create_signing_request():
-    decision = PolicyDecision(
-        decision_id=uuid4(),
-        effect=PolicyEffect.DENY,
-        actor_id="actor-1",
-        assertion_id=uuid4(),
-        correlation_id="corr-1",
-        requested_action="settlement.release",
-        policy_version="policy-v1",
-        decided_at=datetime.now(timezone.utc),
-        reason_code="insufficient_authority",
-    )
     with pytest.raises(PermissionError):
         HardwareSigningRequest.from_policy_decision(
-            decision,
+            _decision(PolicyEffect.DENY),
             key_reference="hsm-key-1",
             payload_digest="sha256:example",
             requested_at=datetime.now(timezone.utc),
         )
 
 
-def test_allowed_policy_can_create_signing_request_without_biometric_material():
-    decision = PolicyDecision(
-        decision_id=uuid4(),
-        effect=PolicyEffect.ALLOW,
-        actor_id="actor-1",
-        assertion_id=uuid4(),
-        correlation_id="corr-1",
-        requested_action="knowledge.promote",
-        policy_version="policy-v1",
-        decided_at=datetime.now(timezone.utc),
-        reason_code="authorized",
-    )
+def test_allowed_policy_carries_integrity_binding_into_signing_request():
+    decision = _decision()
     request = HardwareSigningRequest.from_policy_decision(
         decision,
         key_reference="hsm-key-1",
@@ -93,5 +106,24 @@ def test_allowed_policy_can_create_signing_request_without_biometric_material():
         requested_at=datetime.now(timezone.utc),
     )
     assert request.decision_id == decision.decision_id
+    assert request.device_attestation_reference == "attestation-1"
+    assert request.device_integrity_digest == "sha256:device"
     assert not hasattr(request, "template_id")
     assert not hasattr(request, "cardiac_signal")
+
+
+def test_audit_attestation_carries_same_integrity_binding():
+    decision = _decision()
+    audit = HeartBeatAuditAttestation.from_policy_decision(
+        decision,
+        event_id=uuid4(),
+        event_type="GovernedActionAuthorized",
+        outcome="authorized",
+        occurred_at=datetime.now(timezone.utc),
+        algorithm_version="algorithm-v1",
+        integrity_digest="sha256:assertion",
+    )
+    assert audit.device_attestation_reference == "attestation-1"
+    assert audit.device_integrity_digest == "sha256:device"
+    assert audit.device_trust_policy_version == "device-policy-v1"
+    assert not hasattr(audit, "cardiac_signal")
