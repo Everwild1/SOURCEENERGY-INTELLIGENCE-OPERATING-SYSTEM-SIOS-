@@ -1,0 +1,32 @@
+name: SETC HeartBeat CI
+
+on:
+  pull_request:
+    paths:
+      - 'setc/heartbeat/**'
+      - 'tests/test_heartbeat*.py'
+      - '.github/workflows/setc-heartbeat-ci.yml'
+  push:
+    branches:
+      - setc-hb-001-integration
+    paths:
+      - 'setc/heartbeat/**'
+      - 'tests/test_heartbeat*.py'
+
+permissions:
+  contents: read
+
+jobs:
+  heartbeat-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependency
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Compile HeartBeat domain
+        run: python -m compileall -q setc/heartbeat
+      - name: Run HeartBeat contract tests
+        run: python -m pytest -q tests/test_heartbeat_models.py tests/test_heartbeat_continuity.py
