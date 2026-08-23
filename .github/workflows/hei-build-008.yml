@@ -38,6 +38,9 @@ jobs:
             id uuid PRIMARY KEY DEFAULT gen_random_uuid()
           );
           CREATE SCHEMA rw;
+          CREATE TABLE rw.organizations (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid()
+          );
           SQL
       - name: Apply HEI migration chain
         run: |
