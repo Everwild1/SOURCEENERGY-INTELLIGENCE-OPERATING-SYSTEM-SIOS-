@@ -1,0 +1,10 @@
+BEGIN;
+INSERT INTO public.setc_organizations(oid,legal_name,normalized_name,organization_type,verification_state) VALUES ('SETC-OID-34343434343434343434343434343434','HEI Six','hei six','UNIVERSITY','VERIFIED');
+INSERT INTO public.hei_talent_programs(organization_oid,program_reference,program_type,name,status) VALUES('SETC-OID-34343434343434343434343434343434','TP-006','SCHOLARSHIP','Scholarship Program','ACTIVE');
+INSERT INTO public.hei_student_subjects(organization_oid,subject_reference) VALUES('SETC-OID-34343434343434343434343434343434','SUBJ-006');
+INSERT INTO public.hei_talent_applications(talent_program_id,student_subject_id,application_reference,eligibility_state,review_status,authority_reference) SELECT p.id,s.id,'APP-006','ELIGIBLE','APPROVED','AUTH-APP' FROM public.hei_talent_programs p,public.hei_student_subjects s WHERE p.program_reference='TP-006' AND s.subject_reference='SUBJ-006';
+INSERT INTO public.hei_talent_awards(talent_application_id,award_reference,award_amount,currency_code,award_status,authority_reference) SELECT id,'TA-006',5000,'USD','ACCEPTED','AUTH-AWARD' FROM public.hei_talent_applications WHERE application_reference='APP-006';
+DO $$ DECLARE aid bigint; blocked boolean:=false; BEGIN SELECT id INTO aid FROM public.hei_talent_awards WHERE award_reference='TA-006'; BEGIN INSERT INTO public.hei_talent_disbursement_events(talent_award_id,disbursement_reference,amount,currency_code,disbursement_status) VALUES(aid,'DISB-BLOCK',1000,'USD','CONFIRMED'); EXCEPTION WHEN OTHERS THEN blocked:=true; END; IF NOT blocked THEN RAISE EXCEPTION 'unsubstantiated confirmed disbursement was not blocked'; END IF; END $$;
+DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname = ANY(ARRAY['hei_talent_programs','hei_student_subjects','hei_talent_applications','hei_talent_awards','hei_talent_disbursement_events','hei_workforce_placements','hei_talent_outcomes']) AND NOT c.relrowsecurity) THEN RAISE EXCEPTION 'Wave 6 table without RLS'; END IF; END $$;
+ROLLBACK;
+SELECT 'hei_build_006_contract_passed' AS result;
