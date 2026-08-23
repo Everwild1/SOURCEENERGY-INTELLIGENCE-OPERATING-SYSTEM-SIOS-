@@ -1,0 +1,63 @@
+name: TST Identity RBAC 002 Database Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20260823091000_tst_identity_rbac_002.sql'
+      - 'supabase/tests/tst_identity_rbac_002.sql'
+      - '.github/workflows/tst-identity-rbac-002.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tst-identity-rbac-contract:
+    name: TST identity RBAC DB contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Create Supabase role contract
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
+          END
+          $$;
+          SQL
+      - name: Apply canonical organization contract
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260823010000_hei_build_001_identity_consortium_foundation.sql
+      - name: Apply TST foundation
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260823090000_tst_foundation_001.sql
+      - name: Apply TST identity RBAC migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260823091000_tst_identity_rbac_002.sql
+      - name: Run foundation regression
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/tst_foundation_001.sql
+      - name: Run identity RBAC contract
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/tst_identity_rbac_002.sql
