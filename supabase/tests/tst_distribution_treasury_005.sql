@@ -17,7 +17,7 @@ DO $$
 DECLARE e uuid; f uuid; a uuid; b uuid; initiator uuid; approver uuid; executor uuid; reconciler uuid; dest uuid; acct uuid; d uuid; p uuid; rid uuid;
 BEGIN
  SELECT stewardship_entity_id INTO e FROM tst.stewardship_entities WHERE stewardship_code='TST-TREASURY';
- INSERT INTO tst.funds(stewardship_entity_id,name,purpose,fund_type,currency,status,restriction_type) VALUES(e,'Treasury Test Fund','test','TITHE','USD','ACTIVE','PURPOSE_RESTRICTED') RETURNING fund_id INTO f;
+ INSERT INTO tst.funds(stewardship_entity_id,fund_code,name,purpose,fund_type,currency,status,restriction_type) VALUES(e,'TST-TREASURY-PILOT','Treasury Test Fund','test','TITHE','USD','ACTIVE','PURPOSE_RESTRICTED') RETURNING fund_id INTO f;
  -- Seed received contribution through a valid calculation chain.
  INSERT INTO tst.tithe_elections(stewardship_entity_id,organization_oid,rate,basis_code,currency,status,effective_from) VALUES(e,'SETC-OID-dddddddddddddddddddddddddddddddd',0.10,'TEST','USD','ACTIVE','2026-08-01') RETURNING election_id INTO a;
  INSERT INTO tst.tithe_calculations(election_id,period_start,period_end,eligible_base,applied_rate,calculated_amount,currency,status) VALUES(a,'2026-08-01','2026-08-31',10000,0.10,1000,'USD','APPROVED') RETURNING calculation_id INTO a;
