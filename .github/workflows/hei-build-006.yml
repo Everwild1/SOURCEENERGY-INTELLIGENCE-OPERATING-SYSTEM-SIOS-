@@ -1,0 +1,30 @@
+name: HEI Build 006 Student Talent Mobility Contract
+on:
+  pull_request:
+    branches: [main]
+    paths: ['supabase/migrations/20260823060000_hei_build_006_student_talent_mobility.sql','supabase/tests/hei_build_006.sql','.github/workflows/hei-build-006.yml']
+  push:
+    branches: ['feat/hei-build-006']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hei-build-006-db-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: {POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres, POSTGRES_DB: postgres}
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres" --health-interval=5s --health-timeout=5s --health-retries=10
+    env: {PGHOST: localhost, PGPORT: 5432, PGUSER: postgres, PGPASSWORD: postgres, PGDATABASE: postgres}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Supabase role contracts
+        run: psql -v ON_ERROR_STOP=1 -c "CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN;"
+      - name: Apply Waves 1-6
+        run: |
+          for f in supabase/migrations/202608230{1,2,3,4,5,6}0000_*.sql; do psql -v ON_ERROR_STOP=1 -f "$f"; done
+      - name: Run Wave 6 contracts
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/hei_build_006.sql
