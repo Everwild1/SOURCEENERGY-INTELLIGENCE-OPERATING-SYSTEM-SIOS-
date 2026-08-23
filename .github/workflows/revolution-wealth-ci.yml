@@ -1,0 +1,38 @@
+name: Revolution Wealth Registry CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/*revolution_wealth*.sql'
+      - 'tests/test_revolution_wealth_*.py'
+      - 'docs/revolution-wealth/**'
+      - '.github/workflows/revolution-wealth-ci.yml'
+  push:
+    branches:
+      - 'feat/revolution-wealth-*'
+    paths:
+      - 'supabase/migrations/*revolution_wealth*.sql'
+      - 'tests/test_revolution_wealth_*.py'
+      - 'docs/revolution-wealth/**'
+      - '.github/workflows/revolution-wealth-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  governance-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest==8.3.5
+      - name: Run Revolution Wealth migration contract tests
+        run: python -m pytest -q tests/test_revolution_wealth_registry_migrations.py
+      - name: Assert no service-role key is introduced in frontend contract
+        run: |
+          ! grep -R -n -E 'SUPABASE_SERVICE_ROLE_KEY|service_role_key' docs/revolution-wealth tests/test_revolution_wealth_registry_migrations.py
