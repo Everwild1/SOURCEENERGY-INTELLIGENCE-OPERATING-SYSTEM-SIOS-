@@ -1,0 +1,88 @@
+name: HEI Build 001 Database Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20260823010000_hei_build_001_identity_consortium_foundation.sql'
+      - 'supabase/tests/hei_build_001.sql'
+      - '.github/workflows/hei-build-001.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hei-build-001-db-contract:
+    name: HEI Wave 1 DB contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify PostgreSQL client
+        run: psql --version
+
+      - name: Create Supabase service role contract
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+              CREATE ROLE service_role NOLOGIN;
+            END IF;
+          END
+          $$;
+          SQL
+
+      - name: Apply HEI Wave 1 migration
+        run: |
+          psql -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/20260823010000_hei_build_001_identity_consortium_foundation.sql
+
+      - name: Run HEI Wave 1 database contract tests
+        run: |
+          psql -v ON_ERROR_STOP=1 \
+            -f supabase/tests/hei_build_001.sql
+
+      - name: Verify protected tables and RLS
+        run: |
+          psql -v ON_ERROR_STOP=1 -Atc "
+            SELECT CASE
+              WHEN count(*) = 13 AND count(*) FILTER (WHERE c.relrowsecurity) = 13
+              THEN 'hei_build_001_rls_ok'
+              ELSE 'hei_build_001_rls_failed'
+            END
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public'
+              AND c.relname = ANY(ARRAY[
+                'setc_organizations','setc_organization_aliases','setc_organization_capabilities',
+                'setc_organization_external_ids','setc_organization_relationships','setc_organization_relationship_history',
+                'hei_institution_profiles','hei_institution_designations','hei_consortia','hei_consortium_memberships',
+                'hei_reserved_powers','hei_shared_services','hei_service_entitlements'
+              ]);
+          " | grep -qx 'hei_build_001_rls_ok'
