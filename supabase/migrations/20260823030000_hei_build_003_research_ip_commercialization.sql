@@ -1,0 +1,130 @@
+-- HEI-BUILD-003 — Research, IP, Commercialization & Revenue Waterfall Core
+-- Institutional IP ownership remains explicit; collaboration does not imply transfer.
+
+CREATE TABLE public.hei_research_projects (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  lead_organization_oid text NOT NULL REFERENCES public.setc_organizations(oid),
+  project_reference text NOT NULL,
+  title text NOT NULL,
+  research_domain text,
+  status text NOT NULL DEFAULT 'PROPOSED' CHECK (status IN ('PROPOSED','REVIEW','ACTIVE','SUSPENDED','COMPLETED','CLOSED')),
+  governance_reference text,
+  evidence_reference text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(lead_organization_oid, project_reference)
+);
+
+CREATE TABLE public.hei_research_participants (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  research_project_id bigint NOT NULL REFERENCES public.hei_research_projects(id) ON DELETE CASCADE,
+  organization_oid text NOT NULL REFERENCES public.setc_organizations(oid),
+  participation_role text NOT NULL,
+  ip_rights_reference text,
+  data_rights_reference text,
+  status text NOT NULL DEFAULT 'PROPOSED' CHECK (status IN ('PROPOSED','APPROVED','ACTIVE','SUSPENDED','WITHDRAWN','COMPLETED')),
+  UNIQUE(research_project_id, organization_oid, participation_role)
+);
+
+CREATE TABLE public.hei_ip_assets (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  research_project_id bigint REFERENCES public.hei_research_projects(id),
+  asset_reference text NOT NULL UNIQUE,
+  asset_type text NOT NULL CHECK (asset_type IN ('PATENT','PATENT_APPLICATION','COPYRIGHT','TRADE_SECRET','TRADEMARK','DATASET','SOFTWARE','KNOW_HOW','OTHER')),
+  title text NOT NULL,
+  status text NOT NULL DEFAULT 'DISCLOSED' CHECK (status IN ('DISCLOSED','UNDER_REVIEW','PROTECTED','LICENSED','COMMERCIALIZED','ABANDONED','EXPIRED')),
+  evidence_reference text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.hei_ip_ownership (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  ip_asset_id bigint NOT NULL REFERENCES public.hei_ip_assets(id) ON DELETE CASCADE,
+  owner_organization_oid text NOT NULL REFERENCES public.setc_organizations(oid),
+  ownership_share numeric(9,6) NOT NULL CHECK (ownership_share > 0 AND ownership_share <= 1),
+  ownership_basis text NOT NULL,
+  authority_reference text NOT NULL,
+  effective_at timestamptz NOT NULL DEFAULT now(),
+  evidence_reference text,
+  UNIQUE(ip_asset_id, owner_organization_oid)
+);
+
+CREATE TABLE public.hei_commercialization_cases (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  ip_asset_id bigint NOT NULL REFERENCES public.hei_ip_assets(id),
+  commercialization_reference text NOT NULL UNIQUE,
+  route text NOT NULL CHECK (route IN ('LICENSE','ASSIGNMENT','STARTUP','JOINT_VENTURE','SPONSORED_RESEARCH','PRODUCT','SERVICE','OTHER')),
+  status text NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','DUE_DILIGENCE','CONFLICT_REVIEW','APPROVED','ACTIVE','SUSPENDED','CLOSED','REJECTED')),
+  authority_reference text,
+  conflict_review_state text NOT NULL DEFAULT 'PENDING' CHECK (conflict_review_state IN ('PENDING','CLEARED','ESCALATED','BLOCKED')),
+  evidence_reference text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.hei_commercialization_counterparties (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  commercialization_case_id bigint NOT NULL REFERENCES public.hei_commercialization_cases(id) ON DELETE CASCADE,
+  organization_oid text NOT NULL REFERENCES public.setc_organizations(oid),
+  counterparty_role text NOT NULL,
+  status text NOT NULL DEFAULT 'PROPOSED' CHECK (status IN ('PROPOSED','DUE_DILIGENCE','APPROVED','ACTIVE','SUSPENDED','TERMINATED')),
+  evidence_reference text,
+  UNIQUE(commercialization_case_id, organization_oid, counterparty_role)
+);
+
+CREATE TABLE public.hei_revenue_waterfalls (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  commercialization_case_id bigint NOT NULL REFERENCES public.hei_commercialization_cases(id),
+  waterfall_reference text NOT NULL,
+  version integer NOT NULL CHECK (version > 0),
+  status text NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','APPROVED','ACTIVE','SUPERSEDED','SUSPENDED','CLOSED')),
+  authority_reference text,
+  effective_at timestamptz,
+  evidence_reference text,
+  UNIQUE(commercialization_case_id, waterfall_reference, version)
+);
+
+CREATE TABLE public.hei_revenue_waterfall_lines (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  revenue_waterfall_id bigint NOT NULL REFERENCES public.hei_revenue_waterfalls(id) ON DELETE CASCADE,
+  sequence_no integer NOT NULL CHECK (sequence_no > 0),
+  beneficiary_organization_oid text REFERENCES public.setc_organizations(oid),
+  beneficiary_reference text,
+  distribution_type text NOT NULL CHECK (distribution_type IN ('COST_RECOVERY','INVENTOR_SHARE','INSTITUTION_SHARE','DEPARTMENT_SHARE','RESEARCH_REINVESTMENT','PARTNER_SHARE','OTHER')),
+  percentage_share numeric(9,6) CHECK (percentage_share IS NULL OR (percentage_share >= 0 AND percentage_share <= 1)),
+  fixed_amount numeric(20,4) CHECK (fixed_amount IS NULL OR fixed_amount >= 0),
+  currency_code text CHECK (currency_code IS NULL OR currency_code ~ '^[A-Z]{3}$'),
+  condition_reference text,
+  CHECK (beneficiary_organization_oid IS NOT NULL OR beneficiary_reference IS NOT NULL),
+  CHECK (percentage_share IS NOT NULL OR fixed_amount IS NOT NULL),
+  UNIQUE(revenue_waterfall_id, sequence_no)
+);
+
+CREATE OR REPLACE FUNCTION public.hei_validate_commercialization_case()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE ownership_count bigint;
+BEGIN
+  IF NEW.status IN ('APPROVED','ACTIVE','CLOSED') THEN
+    SELECT count(*) INTO ownership_count FROM public.hei_ip_ownership WHERE ip_asset_id=NEW.ip_asset_id;
+    IF ownership_count = 0 THEN RAISE EXCEPTION 'documented IP ownership required'; END IF;
+    IF NEW.authority_reference IS NULL OR btrim(NEW.authority_reference) = '' THEN RAISE EXCEPTION 'commercialization authority required'; END IF;
+    IF NEW.conflict_review_state <> 'CLEARED' THEN RAISE EXCEPTION 'cleared conflict review required'; END IF;
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER hei_commercialization_case_gate
+BEFORE INSERT OR UPDATE ON public.hei_commercialization_cases
+FOR EACH ROW EXECUTE FUNCTION public.hei_validate_commercialization_case();
+
+DO $$ DECLARE t text; BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'hei_research_projects','hei_research_participants','hei_ip_assets','hei_ip_ownership',
+    'hei_commercialization_cases','hei_commercialization_counterparties','hei_revenue_waterfalls','hei_revenue_waterfall_lines'
+  ] LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('REVOKE ALL ON TABLE public.%I FROM anon, authenticated', t);
+    EXECUTE format('CREATE POLICY %I ON public.%I FOR ALL TO service_role USING (true) WITH CHECK (true)', t || '_service_role_all', t);
+  END LOOP;
+END $$;
+
+COMMENT ON TABLE public.hei_ip_ownership IS 'Explicit institutional IP ownership. Research participation, consortium membership, platform access and funding do not imply transfer of ownership.';
+COMMENT ON TABLE public.hei_revenue_waterfalls IS 'Governed commercialization distribution rules; does not itself represent bank settlement or custody finality.';
