@@ -1,0 +1,28 @@
+name: TST Oversight Compliance 008 Contract
+on:
+  pull_request:
+    branches: [main]
+    paths: ['supabase/migrations/20260823101000_tst_oversight_compliance_008.sql','supabase/tests/tst_oversight_compliance_008.sql','.github/workflows/tst-oversight-compliance-008.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: {POSTGRES_USER: postgres,POSTGRES_PASSWORD: postgres,POSTGRES_DB: postgres}
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres" --health-interval=5s --health-timeout=5s --health-retries=10
+    env: {PGHOST: localhost,PGPORT: 5432,PGUSER: postgres,PGPASSWORD: postgres,PGDATABASE: postgres}
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF; IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF; IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF; END $$;
+          SQL
+      - run: |
+          for f in supabase/migrations/20260823010000_hei_build_001_identity_consortium_foundation.sql supabase/migrations/20260823090000_tst_foundation_001.sql supabase/migrations/20260823091000_tst_identity_rbac_002.sql supabase/migrations/20260823092000_tst_stewardship_ledger_003.sql supabase/migrations/20260823093000_tst_beneficiary_governance_004.sql supabase/migrations/20260823094000_tst_distribution_treasury_005.sql supabase/migrations/20260823095000_tst_evidence_audit_integrity_006.sql supabase/migrations/20260823100000_tst_reporting_assurance_007.sql supabase/migrations/20260823101000_tst_oversight_compliance_008.sql; do psql -v ON_ERROR_STOP=1 -f "$f"; done
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/tests/tst_oversight_compliance_008.sql
