@@ -53,7 +53,7 @@ CREATE INDEX tst_audit_correlation_idx ON tst.audit_events(correlation_id) WHERE
 CREATE OR REPLACE FUNCTION tst_private.append_audit_event(
  p_entity_id uuid,p_actor_id uuid,p_action_code text,p_object_type text,p_object_id uuid,p_correlation_id uuid,p_payload jsonb DEFAULT '{}'::jsonb
 ) RETURNS uuid
-LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog,tst,tst_private AS $$
+LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog,tst,tst_private,public,extensions AS $$
 DECLARE seq bigint; prev text; eid uuid; ts timestamptz:=clock_timestamp(); digest_text text;
 BEGIN
  PERFORM pg_advisory_xact_lock(hashtextextended(p_entity_id::text,0));
@@ -72,7 +72,7 @@ BEGIN RAISE EXCEPTION 'audit events are append-only'; END $$;
 CREATE TRIGGER tst_audit_no_update_delete BEFORE UPDATE OR DELETE ON tst.audit_events FOR EACH ROW EXECUTE FUNCTION tst_private.block_audit_mutation();
 
 CREATE OR REPLACE FUNCTION tst_private.verify_audit_chain(p_entity_id uuid)
-RETURNS boolean LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=pg_catalog,tst AS $$
+RETURNS boolean LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=pg_catalog,tst,public,extensions AS $$
 DECLARE r record; expected_prev text:=NULL; expected_hash text;
 BEGIN
  FOR r IN SELECT * FROM tst.audit_events WHERE stewardship_entity_id=p_entity_id ORDER BY sequence_no LOOP
