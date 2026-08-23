@@ -1,0 +1,63 @@
+name: HEI Security Hardening 001
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20260823090000_hei_security_hardening_001.sql'
+      - '.github/workflows/hei-security-hardening-001.yml'
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Supabase role contracts
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN;
+          SQL
+      - name: Apply HEI Waves 1-8 and hardening
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260823010000_hei_build_001_identity_consortium_foundation.sql
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260823020000_hei_build_002_endowment_fiduciary_core.sql
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260823030000_hei_build_003_research_ip_commercialization.sql
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260823040000_hei_build_004_capital_opportunity_core.sql
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260823050000_hei_build_005_grants_philanthropy_mission_capital.sql
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260823060000_hei_build_006_student_talent_mobility.sql
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260823070000_hei_build_007_procurement_supplier_clusters.sql
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260823080000_hei_build_008_infrastructure_real_assets.sql
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260823090000_hei_security_hardening_001.sql
+      - name: Verify function security contracts
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE bad_count integer;
+          BEGIN
+            SELECT count(*) INTO bad_count
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid=p.pronamespace
+            WHERE n.nspname='public'
+              AND p.proname LIKE 'hei_validate_%'
+              AND (p.prosecdef OR p.proconfig IS NULL OR NOT ('search_path=public, pg_temp' = ANY(p.proconfig)));
+            IF bad_count <> 0 THEN
+              RAISE EXCEPTION 'HEI validation function security contract failed: % functions noncompliant', bad_count;
+            END IF;
+          END $$;
+          SQL
