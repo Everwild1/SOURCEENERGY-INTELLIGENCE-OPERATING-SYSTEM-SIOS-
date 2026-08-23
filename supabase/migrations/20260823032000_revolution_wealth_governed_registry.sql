@@ -1,7 +1,22 @@
-create type if not exists rw.claim_status as enum ('documented_internal','pending_verification','verified','target','proposed','historical','superseded');
-create type if not exists rw.fund_status as enum ('draft','forming','active','paused','closed','restricted');
-create type if not exists rw.vehicle_status as enum ('draft','forming','active','paused','closed','restricted');
-create type if not exists rw.capital_event_type as enum ('commitment','subscription','allocation','deployment','reserve','distribution','return','valuation','write_down','transfer','other');
+do $$ begin
+  create type rw.claim_status as enum ('documented_internal','pending_verification','verified','target','proposed','historical','superseded');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type rw.fund_status as enum ('draft','forming','active','paused','closed','restricted');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type rw.vehicle_status as enum ('draft','forming','active','paused','closed','restricted');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type rw.capital_event_type as enum ('commitment','subscription','allocation','deployment','reserve','distribution','return','valuation','write_down','transfer','other');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists rw.funds (
   id uuid primary key default gen_random_uuid(), registry_code text not null unique,
