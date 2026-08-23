@@ -37,6 +37,7 @@ jobs:
           CREATE TABLE auth.users (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid()
           );
+          CREATE SCHEMA rw;
           SQL
       - name: Apply HEI migration chain
         run: |
