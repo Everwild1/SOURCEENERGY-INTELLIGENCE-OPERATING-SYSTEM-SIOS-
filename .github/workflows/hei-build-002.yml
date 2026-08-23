@@ -1,0 +1,53 @@
+name: HEI Build 002 Endowment Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20260823020000_hei_build_002_endowment_fiduciary_core.sql'
+      - 'supabase/tests/hei_build_002.sql'
+      - '.github/workflows/hei-build-002.yml'
+  push:
+    branches: ['feat/hei-build-002']
+    paths:
+      - 'supabase/migrations/20260823020000_hei_build_002_endowment_fiduciary_core.sql'
+      - 'supabase/tests/hei_build_002.sql'
+      - '.github/workflows/hei-build-002.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hei-build-002-db-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create service role
+        run: psql -v ON_ERROR_STOP=1 -c "CREATE ROLE service_role NOLOGIN;"
+      - name: Apply Wave 1 foundation
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260823010000_hei_build_001_identity_consortium_foundation.sql
+      - name: Apply Wave 2 endowment core
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260823020000_hei_build_002_endowment_fiduciary_core.sql
+      - name: Run Wave 2 contracts
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/hei_build_002.sql
