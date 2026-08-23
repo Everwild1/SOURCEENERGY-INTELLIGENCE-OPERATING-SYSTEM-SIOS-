@@ -27,6 +27,13 @@ jobs:
       PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
+      - name: Create Supabase role contracts
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN;
+          SQL
       - name: Apply HEI migration chain
         run: |
           for f in $(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort); do
