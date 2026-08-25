@@ -1,0 +1,29 @@
+name: Media.SourceEnergy App
+
+on:
+  pull_request:
+    paths:
+      - 'apps/media-sourceenergy/**'
+      - '.github/workflows/media-sourceenergy-app.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/media-sourceenergy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --package-lock-only && npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
