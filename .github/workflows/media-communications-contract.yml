@@ -83,18 +83,16 @@ jobs:
       PGDATABASE: postgres
     steps:
       - uses: actions/checkout@v4
-      - name: Install pgTAP
+      - name: Install PostgreSQL client
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client postgresql-15-pgtap
+          sudo apt-get install -y postgresql-client
       - name: Load deterministic Media authorization fixture
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/database/media_auth_fixture.sql
-      - name: Enable pgTAP
-        run: psql -v ON_ERROR_STOP=1 -c 'create extension if not exists pgtap;'
-      - name: Execute Media RLS contract
-        run: pg_prove --ext .sql supabase/tests/database/media_auth_rls.test.sql
+      - name: Execute Media RLS and separation-of-duties contract
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/database/media_auth_rls.test.sql
       - name: Emit database verification summary
         run: |
-          echo 'Media database authorization contract executed.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Media database authorization contract executed with native PostgreSQL assertions.' >> "$GITHUB_STEP_SUMMARY"
           echo '- Synthetic principals only; no production Auth users provisioned.' >> "$GITHUB_STEP_SUMMARY"
-          echo '- RLS and separated Media permissions verified at database-test layer.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- RLS, outsider denial and Contributor/Approver/Publisher separation verified.' >> "$GITHUB_STEP_SUMMARY"
