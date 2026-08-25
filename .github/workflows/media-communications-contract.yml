@@ -1,0 +1,61 @@
+name: Media Communications Contract
+
+on:
+  pull_request:
+    paths:
+      - 'docs/media-communications/**'
+      - 'contracts/media-communications/**'
+      - '.github/workflows/media-communications-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required Media contract controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          contract='contracts/media-communications/ci-contract.txt'
+          docs='docs/media-communications/README.md'
+          test -s "$contract"
+          test -s "$docs"
+          required=(
+            'REQUIRED_GUARD=setc_media_publication_ready'
+            'REQUIRED_COMMAND=setc_media_transition'
+            'REQUIRED_COMMAND=setc_media_publish'
+            'REQUIRED_COMMAND=setc_media_emit_event'
+            'REQUIRED_COMMAND=setc_media_enqueue_outbox'
+            'REQUIRED_RULE=generic-transition-must-not-publish'
+            'REQUIRED_RULE=publish-requires-media.publish'
+            'REQUIRED_RULE=publish-requires-publication-ready'
+            'REQUIRED_RULE=material-claims-require-evidence'
+            'REQUIRED_RULE=cross-organization-access-denied'
+            'REQUIRED_RULE=outbox-idempotency-required'
+            'REQUIRED_RULE=delivery-does-not-create-authority'
+          )
+          for item in "${required[@]}"; do
+            grep -Fxq "$item" "$contract" || { echo "Missing contract control: $item"; exit 1; }
+          done
+          grep -Fq 'setc_media_publish' "$docs"
+          grep -Fq 'setc_media_publication_ready' "$docs"
+          grep -Fq 'idempot' "$docs"
+      - name: Enforce no production identity assignment in contract PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE 'INSERT[[:space:]]+INTO[[:space:]]+media_access\.(user_roles|assignments)' docs/media-communications contracts/media-communications 2>/dev/null; then
+            echo 'Production Media identity/role assignment detected in contract-only paths.'
+            exit 1
+          fi
+      - name: Emit contract verification summary
+        run: |
+          echo 'Media Communications contract controls verified.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Publication must use governed publish command.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Publication readiness and media.publish authority are mandatory.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Outbox idempotency and institutional-truth boundary are mandatory.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Real-principal RLS integration tests remain gated on Auth provisioning.' >> "$GITHUB_STEP_SUMMARY"
