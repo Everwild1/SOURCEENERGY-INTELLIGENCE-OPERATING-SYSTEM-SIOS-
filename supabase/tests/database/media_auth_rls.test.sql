@@ -1,57 +1,58 @@
 begin;
 
 -- Synthetic UUIDs simulate JWT subjects only. They are not production identities.
--- Supabase's current RLS testing guidance supports setting the authenticated role
--- and request.jwt.claim.sub for database-level authorization tests.
+-- Fail fast with native PostgreSQL exceptions so CI has no external pgTAP package dependency.
 
-select plan(10);
+do $$
+declare v_count bigint; v_uid uuid;
+begin
+  select count(*) into v_count
+  from pg_class c join pg_namespace n on n.oid=c.relnamespace
+  where n.nspname='public' and c.relname in ('setc_media_content','setc_media_events','setc_media_outbox') and c.relrowsecurity;
+  if v_count <> 3 then raise exception 'MEDIA_RLS_ASSERTION_FAILED expected 3 RLS tables, got %', v_count; end if;
 
-select ok(
-  (select relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname='setc_media_content'),
-  'media content has RLS enabled'
-);
+  select count(*) into v_count from auth.users;
+  if v_count <> 0 then raise exception 'MEDIA_AUTH_ISOLATION_FAILED expected zero production auth users, got %', v_count; end if;
 
-select ok(
-  (select relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname='setc_media_events'),
-  'media events have RLS enabled'
-);
+  if media_access.assert_test_principal('TEST_CONTRIBUTOR') <> '10000000-0000-4000-8000-000000000001'::uuid then
+    raise exception 'MEDIA_TEST_PRINCIPAL_FAILED contributor UUID mismatch';
+  end if;
 
-select ok(
-  (select relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname='setc_media_outbox'),
-  'media outbox has RLS enabled'
-);
+  perform media_access.test_set_principal('TEST_CONTRIBUTOR');
+  v_uid := auth.uid();
+  if v_uid <> '10000000-0000-4000-8000-000000000001'::uuid then
+    raise exception 'MEDIA_JWT_SIMULATION_FAILED expected contributor UUID, got %', v_uid;
+  end if;
 
-select is((select count(*)::bigint from auth.users), 0::bigint,
-  'database contract does not require production Auth users');
+  perform media_access.test_set_principal('TEST_OUTSIDER');
+  if media_access.has_permission(null,'media.publish') then
+    raise exception 'MEDIA_AUTHZ_FAILED outsider unexpectedly has publish permission';
+  end if;
 
-select is(media_access.assert_test_principal('TEST_CONTRIBUTOR'),
-  '10000000-0000-4000-8000-000000000001'::uuid,
-  'synthetic contributor principal is stable');
+  if not exists(select 1 from media_access.permissions where permission_code='media.publish') then
+    raise exception 'MEDIA_PERMISSION_FAILED media.publish missing';
+  end if;
+  if not exists(select 1 from media_access.permissions where permission_code='media.approve') then
+    raise exception 'MEDIA_PERMISSION_FAILED media.approve missing';
+  end if;
+  if not exists(select 1 from media_access.permissions where permission_code='media.fact_validate') then
+    raise exception 'MEDIA_PERMISSION_FAILED media.fact_validate missing';
+  end if;
 
-select media_access.test_set_principal('TEST_CONTRIBUTOR');
-set local role authenticated;
-select is(auth.uid(), '10000000-0000-4000-8000-000000000001'::uuid,
-  'authenticated contributor JWT subject is simulated');
-reset role;
+  if exists(
+    select 1 from media_access.role_permissions rp
+    where rp.role_code='MEDIA_CONTRIBUTOR' and rp.permission_code in ('media.approve','media.publish','media.fact_validate')
+  ) then raise exception 'MEDIA_SOD_FAILED contributor has elevated approval/publish/fact permission'; end if;
 
-select media_access.test_set_principal('TEST_OUTSIDER');
-set local role authenticated;
-select ok(not media_access.has_permission(null,'media.publish'),
-  'unassigned principal cannot publish without organization authority');
-reset role;
+  if exists(
+    select 1 from media_access.role_permissions rp
+    where rp.role_code='MEDIA_APPROVER' and rp.permission_code='media.publish'
+  ) then raise exception 'MEDIA_SOD_FAILED approver can publish'; end if;
 
-select ok(
-  exists(select 1 from media_access.permissions where permission_code='media.publish'),
-  'media.publish permission exists'
-);
-select ok(
-  exists(select 1 from media_access.permissions where permission_code='media.approve'),
-  'media.approve permission exists separately from publish'
-);
-select ok(
-  exists(select 1 from media_access.permissions where permission_code='media.fact_validate'),
-  'fact validation permission exists separately from approval'
-);
+  if exists(
+    select 1 from media_access.role_permissions rp
+    where rp.role_code='MEDIA_PUBLISHER' and rp.permission_code='media.approve'
+  ) then raise exception 'MEDIA_SOD_FAILED publisher can approve'; end if;
+end $$;
 
-select * from finish();
 rollback;
