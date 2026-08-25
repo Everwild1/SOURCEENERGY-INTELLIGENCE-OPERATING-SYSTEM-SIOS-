@@ -5,6 +5,7 @@ on:
     paths:
       - 'docs/media-communications/**'
       - 'contracts/media-communications/**'
+      - 'supabase/tests/database/media_*.sql'
       - '.github/workflows/media-communications-contract.yml'
   workflow_dispatch:
 
@@ -58,4 +59,42 @@ jobs:
           echo '- Publication must use governed publish command.' >> "$GITHUB_STEP_SUMMARY"
           echo '- Publication readiness and media.publish authority are mandatory.' >> "$GITHUB_STEP_SUMMARY"
           echo '- Outbox idempotency and institutional-truth boundary are mandatory.' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Real-principal RLS integration tests remain gated on Auth provisioning.' >> "$GITHUB_STEP_SUMMARY"
+
+  database-authorization:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pgTAP
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client postgresql-15-pgtap
+      - name: Load deterministic Media authorization fixture
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/database/media_auth_fixture.sql
+      - name: Enable pgTAP
+        run: psql -v ON_ERROR_STOP=1 -c 'create extension if not exists pgtap;'
+      - name: Execute Media RLS contract
+        run: pg_prove --ext .sql supabase/tests/database/media_auth_rls.test.sql
+      - name: Emit database verification summary
+        run: |
+          echo 'Media database authorization contract executed.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Synthetic principals only; no production Auth users provisioned.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- RLS and separated Media permissions verified at database-test layer.' >> "$GITHUB_STEP_SUMMARY"
