@@ -69,3 +69,8 @@ Because production creator/work/opportunity data is not yet present and direct c
 ## Release decision
 
 CRUDS-E09 is ready for Draft PR review. Production data activation remains intentionally gated on an approved server-side CRUDS gateway and publication policy; that operational activation does not block the frontend release artifact or its default-deny safety posture.
+
+## Publication
+
+- Release source published to `feat/cruds-universe-foundation` through the connected GitHub integration.
+- Draft PR #107 remains the release review surface and Program Issue #106 remains the delivery record.
