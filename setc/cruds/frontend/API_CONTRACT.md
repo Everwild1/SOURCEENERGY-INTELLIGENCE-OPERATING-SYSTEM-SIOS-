@@ -1,6 +1,6 @@
 # CRUDS E09 frontend gateway contract
 
-The frontend reads a public-safe, versioned projection from `GET {VITE_CRUDS_API_URL}/universe`. It does not connect directly to the `cruds` schema. This preserves the E01 default-deny invariant while the gateway authenticates callers, applies publication rules and reads Supabase with server-side credentials.
+The frontend reads a public-safe, versioned projection from `GET {VITE_CRUDS_API_URL}/universe`. In production, `VITE_CRUDS_API_URL=/api` routes through the same-origin Sites worker, which authenticates to the CRUDS Edge Function with a server-side runtime value. The browser does not connect directly to Supabase and receives no database credential.
 
 ## Read projection
 
@@ -28,9 +28,12 @@ Future authenticated commands use gateway endpoints rather than direct Data API 
 
 The bundled preview data remains active when `VITE_CRUDS_API_URL` is absent. Preview interactions are local and transmit nothing.
 
+The live gateway returns empty arrays when no records satisfy the publication policy. It never substitutes preview fixtures for production data. See `../PUBLICATION_POLICY.md` for the full eligibility and withdrawal rules.
+
 ## Security posture
 
 - Never ship a Supabase secret/service-role key in the Vite bundle.
+- Keep the Edge Function publishable key in the Sites worker runtime; do not forward it to the browser.
 - Keep all 21 `cruds` tables RLS-enabled and direct `anon` / `authenticated` grants revoked unless a separately reviewed policy explicitly changes the access model.
 - Apply publication, identity, evidence and role checks in the gateway; do not infer authority from user-editable metadata.
 - Preserve correction history and methodology versions in every relevant projection.

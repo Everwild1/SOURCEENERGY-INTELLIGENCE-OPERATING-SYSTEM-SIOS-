@@ -11,6 +11,8 @@ npm run dev -- --host 0.0.0.0 --port 4173 --strictPort
 
 Without `VITE_CRUDS_API_URL`, the app uses a clearly labelled preview dataset. Configure the variable with the approved CRUDS gateway base URL to load `GET /universe`; direct browser access to Supabase is intentionally unsupported.
 
+For the Sites production build, set `VITE_CRUDS_API_URL=/api`. The Sites worker then proxies the request to the approved Edge Function using `CRUDS_API_URL` and the server-side `CRUDS_API_KEY` runtime value.
+
 ## Verification
 
 ```sh
