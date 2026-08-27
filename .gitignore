@@ -1,5 +1,25 @@
+# Python generated artifacts
 __pycache__/
 *.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local environments
+.venv/
+venv/
+.env
+.env.*
+
+# Editor / OS noise
+.DS_Store
+.vscode/
+.idea/
+
+# Node and local build artifacts
 node_modules/
 dist/
 work/

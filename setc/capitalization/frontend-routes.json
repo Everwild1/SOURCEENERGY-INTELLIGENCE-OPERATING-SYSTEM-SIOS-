@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "authorityBoundary": "Browser clients use server APIs; internal capitalization tables and service-role credentials are never exposed.",
+  "public": [
+    {
+      "path": "/our-services/live-interbank-dashboard/",
+      "titleUntilLiveClaimGate": "Interbank Network Registry & Connectivity Status",
+      "data": [
+        "GET /v1/public/network-directory",
+        "GET /v1/public/dashboard-metrics"
+      ],
+      "actions": []
+    }
+  ],
+  "protected": [
+    {"path": "/capitalization/overview", "roles": ["executive", "governor", "auditor"], "mode": "read"},
+    {"path": "/capitalization/commitments", "roles": ["capital_ops", "approver", "auditor"], "mode": "governed-command"},
+    {"path": "/capitalization/treasury", "roles": ["treasury", "auditor", "governor"], "mode": "governed-command"},
+    {"path": "/capitalization/interbank", "roles": ["network_ops", "compliance", "auditor", "governor"], "mode": "governed-command"},
+    {"path": "/capitalization/settlements", "roles": ["settlement_ops", "approver", "compliance", "auditor"], "mode": "governed-command"},
+    {"path": "/capitalization/compliance", "roles": ["compliance", "auditor", "governor"], "mode": "governed-command"},
+    {"path": "/capitalization/risk", "roles": ["risk", "auditor", "governor"], "mode": "governed-command"},
+    {"path": "/capitalization/audit-lineage", "roles": ["auditor", "governor"], "mode": "read-export"},
+    {"path": "/capitalization/governance/release-gates", "roles": ["governor", "independent_approver", "auditor"], "mode": "evidence-gated-command"}
+  ],
+  "hardGates": {
+    "productionSettlement": "PRODUCTION_SETTLEMENT",
+    "publicLiveNetworkClaims": "PUBLIC_LIVE_NETWORK_CLAIMS"
+  }
+}

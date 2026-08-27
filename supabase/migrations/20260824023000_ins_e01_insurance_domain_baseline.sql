@@ -1,0 +1,68 @@
+-- SourceEnergy Insurance — INS-E01 domain baseline
+-- SETC-065 implementation tranche.
+-- Regulatory invariant: database workflow state does not itself create coverage,
+-- bind authority, carrier/broker/reinsurer authority, claims authority, or a guarantee.
+
+create table if not exists public.setc_insurance_products (
+  product_id uuid primary key default gen_random_uuid(),
+  organization_oid text not null references public.setc_organizations(oid),
+  product_code text not null,
+  product_name text not null,
+  product_type text not null,
+  status text not null default 'draft' check (status in ('draft','review','approved','active','suspended','retired')),
+  authority_status text not null default 'unverified' check (authority_status in ('unverified','pending','verified','restricted','expired','revoked')),
+  authority_evidence_ref text,
+  jurisdiction_codes text[] not null default '{}',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (organization_oid, product_code)
+);
+create table if not exists public.setc_insurance_risk_objects (risk_object_id uuid primary key default gen_random_uuid(), se_risk_id text not null unique check (se_risk_id ~ '^SE-RISK-[0-9A-Fa-f]{32}$'), owner_organization_oid text not null references public.setc_organizations(oid), risk_type text not null, subject_type text not null, subject_ref text not null, jurisdiction_code text, lifecycle_status text not null default 'active' check (lifecycle_status in ('active','inactive','retired','archived')), provenance jsonb not null default '{}'::jsonb, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists public.setc_insurance_risk_assessments (risk_assessment_id uuid primary key default gen_random_uuid(), risk_object_id uuid not null references public.setc_insurance_risk_objects(risk_object_id), assessing_organization_oid text not null references public.setc_organizations(oid), methodology text not null, methodology_version text, risk_score numeric(18,8), risk_band text, assessment_status text not null default 'draft' check (assessment_status in ('draft','review','final','superseded','withdrawn')), evidence_refs jsonb not null default '[]'::jsonb, assessed_at timestamptz, created_at timestamptz not null default now());
+create table if not exists public.setc_insurance_requirements (insurance_requirement_id uuid primary key default gen_random_uuid(), organization_oid text not null references public.setc_organizations(oid), risk_object_id uuid references public.setc_insurance_risk_objects(risk_object_id), requirement_type text not null, coverage_type text not null, minimum_limit numeric(24,6) check (minimum_limit is null or minimum_limit >= 0), currency_code text check (currency_code is null or currency_code ~ '^[A-Z]{3}$'), jurisdiction_code text, effective_at timestamptz, expires_at timestamptz, evidence_ref text, status text not null default 'proposed' check (status in ('proposed','required','satisfied','waived','expired','cancelled')), created_at timestamptz not null default now(), check (expires_at is null or effective_at is null or expires_at > effective_at));
+create table if not exists public.setc_insurance_underwriting_submissions (underwriting_submission_id uuid primary key default gen_random_uuid(), applicant_organization_oid text not null references public.setc_organizations(oid), product_id uuid references public.setc_insurance_products(product_id), risk_object_id uuid not null references public.setc_insurance_risk_objects(risk_object_id), submission_status text not null default 'draft' check (submission_status in ('draft','submitted','in_review','referred','quoted','declined','withdrawn','expired')), requested_limit numeric(24,6) check (requested_limit is null or requested_limit >= 0), requested_currency text check (requested_currency is null or requested_currency ~ '^[A-Z]{3}$'), requested_effective_at timestamptz, evidence_refs jsonb not null default '[]'::jsonb, submitted_at timestamptz, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists public.setc_insurance_quotes (quote_id uuid primary key default gen_random_uuid(), underwriting_submission_id uuid not null references public.setc_insurance_underwriting_submissions(underwriting_submission_id), quoting_organization_oid text not null references public.setc_organizations(oid), quote_status text not null default 'draft' check (quote_status in ('draft','offered','accepted','declined','expired','withdrawn')), premium_amount numeric(24,6) check (premium_amount is null or premium_amount >= 0), currency_code text check (currency_code is null or currency_code ~ '^[A-Z]{3}$'), coverage_limit numeric(24,6) check (coverage_limit is null or coverage_limit >= 0), deductible_amount numeric(24,6) check (deductible_amount is null or deductible_amount >= 0), valid_until timestamptz, terms jsonb not null default '{}'::jsonb, authority_evidence_ref text, created_at timestamptz not null default now());
+create table if not exists public.setc_insurance_policies (policy_id uuid primary key default gen_random_uuid(), policy_number text not null unique, quote_id uuid references public.setc_insurance_quotes(quote_id), insured_organization_oid text not null references public.setc_organizations(oid), issuing_organization_oid text not null references public.setc_organizations(oid), product_id uuid references public.setc_insurance_products(product_id), risk_object_id uuid not null references public.setc_insurance_risk_objects(risk_object_id), policy_status text not null default 'pending' check (policy_status in ('pending','issued','active','suspended','cancelled','expired','nonrenewed','void')), bind_state text not null default 'not_bound' check (bind_state in ('not_bound','pending_authority','bound','declined','void')), authority_evidence_ref text, coverage_limit numeric(24,6) check (coverage_limit is null or coverage_limit >= 0), currency_code text check (currency_code is null or currency_code ~ '^[A-Z]{3}$'), effective_at timestamptz, expires_at timestamptz, issued_at timestamptz, provenance jsonb not null default '{}'::jsonb, created_at timestamptz not null default now(), updated_at timestamptz not null default now(), check (expires_at is null or effective_at is null or expires_at > effective_at), check (bind_state <> 'bound' or authority_evidence_ref is not null));
+create table if not exists public.setc_insurance_endorsements (endorsement_id uuid primary key default gen_random_uuid(), policy_id uuid not null references public.setc_insurance_policies(policy_id), endorsement_number text not null, endorsement_type text not null, status text not null default 'draft' check (status in ('draft','review','issued','effective','withdrawn','void')), effective_at timestamptz, change_set jsonb not null default '{}'::jsonb, authority_evidence_ref text, created_at timestamptz not null default now(), unique(policy_id, endorsement_number));
+create table if not exists public.setc_insurance_premiums (premium_id uuid primary key default gen_random_uuid(), policy_id uuid not null references public.setc_insurance_policies(policy_id), payer_organization_oid text references public.setc_organizations(oid), payee_organization_oid text references public.setc_organizations(oid), premium_type text not null default 'written', amount numeric(24,6) not null check (amount >= 0), currency_code text not null check (currency_code ~ '^[A-Z]{3}$'), due_at timestamptz, settlement_status text not null default 'unsettled' check (settlement_status in ('unsettled','pending','settled','failed','refunded','void')), settlement_system text, settlement_reference text, created_at timestamptz not null default now(), settled_at timestamptz);
+create table if not exists public.setc_insurance_claims (claim_id uuid primary key default gen_random_uuid(), claim_number text not null unique, policy_id uuid not null references public.setc_insurance_policies(policy_id), claimant_organization_oid text references public.setc_organizations(oid), administering_organization_oid text references public.setc_organizations(oid), loss_type text not null, loss_occurred_at timestamptz, reported_at timestamptz not null default now(), claimed_amount numeric(24,6) check (claimed_amount is null or claimed_amount >= 0), reserved_amount numeric(24,6) check (reserved_amount is null or reserved_amount >= 0), paid_amount numeric(24,6) check (paid_amount is null or paid_amount >= 0), currency_code text check (currency_code is null or currency_code ~ '^[A-Z]{3}$'), claim_status text not null default 'reported' check (claim_status in ('reported','acknowledged','investigating','reserved','approved','partially_paid','paid','denied','withdrawn','closed','reopened')), authority_evidence_ref text, evidence_refs jsonb not null default '[]'::jsonb, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+
+create index if not exists idx_ins_products_org on public.setc_insurance_products(organization_oid);
+create index if not exists idx_ins_risk_owner on public.setc_insurance_risk_objects(owner_organization_oid);
+create index if not exists idx_ins_assessments_risk on public.setc_insurance_risk_assessments(risk_object_id);
+create index if not exists idx_ins_assessments_org on public.setc_insurance_risk_assessments(assessing_organization_oid);
+create index if not exists idx_ins_requirements_org on public.setc_insurance_requirements(organization_oid);
+create index if not exists idx_ins_requirements_risk on public.setc_insurance_requirements(risk_object_id);
+create index if not exists idx_ins_submissions_org on public.setc_insurance_underwriting_submissions(applicant_organization_oid);
+create index if not exists idx_ins_submissions_product on public.setc_insurance_underwriting_submissions(product_id);
+create index if not exists idx_ins_submissions_risk on public.setc_insurance_underwriting_submissions(risk_object_id);
+create index if not exists idx_ins_quotes_submission on public.setc_insurance_quotes(underwriting_submission_id);
+create index if not exists idx_ins_quotes_org on public.setc_insurance_quotes(quoting_organization_oid);
+create index if not exists idx_ins_policies_quote on public.setc_insurance_policies(quote_id);
+create index if not exists idx_ins_policies_insured on public.setc_insurance_policies(insured_organization_oid);
+create index if not exists idx_ins_policies_issuer on public.setc_insurance_policies(issuing_organization_oid);
+create index if not exists idx_ins_policies_product on public.setc_insurance_policies(product_id);
+create index if not exists idx_ins_policies_risk on public.setc_insurance_policies(risk_object_id);
+create index if not exists idx_ins_endorsements_policy on public.setc_insurance_endorsements(policy_id);
+create index if not exists idx_ins_premiums_policy on public.setc_insurance_premiums(policy_id);
+create index if not exists idx_ins_premiums_payer on public.setc_insurance_premiums(payer_organization_oid);
+create index if not exists idx_ins_premiums_payee on public.setc_insurance_premiums(payee_organization_oid);
+create index if not exists idx_ins_claims_policy on public.setc_insurance_claims(policy_id);
+create index if not exists idx_ins_claims_claimant on public.setc_insurance_claims(claimant_organization_oid);
+create index if not exists idx_ins_claims_admin_org on public.setc_insurance_claims(administering_organization_oid);
+
+alter table public.setc_insurance_products enable row level security;
+alter table public.setc_insurance_risk_objects enable row level security;
+alter table public.setc_insurance_risk_assessments enable row level security;
+alter table public.setc_insurance_requirements enable row level security;
+alter table public.setc_insurance_underwriting_submissions enable row level security;
+alter table public.setc_insurance_quotes enable row level security;
+alter table public.setc_insurance_policies enable row level security;
+alter table public.setc_insurance_endorsements enable row level security;
+alter table public.setc_insurance_premiums enable row level security;
+alter table public.setc_insurance_claims enable row level security;
+revoke all privileges on public.setc_insurance_products, public.setc_insurance_risk_objects, public.setc_insurance_risk_assessments, public.setc_insurance_requirements, public.setc_insurance_underwriting_submissions, public.setc_insurance_quotes, public.setc_insurance_policies, public.setc_insurance_endorsements, public.setc_insurance_premiums, public.setc_insurance_claims from anon, authenticated;
+grant all privileges on public.setc_insurance_products, public.setc_insurance_risk_objects, public.setc_insurance_risk_assessments, public.setc_insurance_requirements, public.setc_insurance_underwriting_submissions, public.setc_insurance_quotes, public.setc_insurance_policies, public.setc_insurance_endorsements, public.setc_insurance_premiums, public.setc_insurance_claims to service_role;
+comment on table public.setc_insurance_policies is 'Insurance policy administration record. A row does not itself establish legal coverage or bind authority; bind_state=bound requires authority evidence.';
+comment on table public.setc_insurance_claims is 'Claims administration record. Workflow state does not itself confer claims-adjustment or payment authority.';

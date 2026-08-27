@@ -1,0 +1,55 @@
+name: SETC HeartBeat CI
+
+on:
+  pull_request:
+    paths:
+      - 'setc/heartbeat/**'
+      - 'tests/test_heartbeat*.py'
+      - 'supabase/migrations/*heartbeat*.sql'
+      - '.github/workflows/setc-heartbeat-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'setc/heartbeat/**'
+      - 'tests/test_heartbeat*.py'
+      - 'supabase/migrations/*heartbeat*.sql'
+      - '.github/workflows/setc-heartbeat-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  heartbeat-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependency
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Compile HeartBeat domain
+        run: python -m compileall -q setc/heartbeat
+      - name: Run HeartBeat contract tests
+        run: python -m pytest -q tests/test_heartbeat.py tests/test_heartbeat_continuity.py tests/test_heartbeat_device_trust.py tests/test_heartbeat_issuance.py
+      - name: Verify biometric migration guardrails
+        run: |
+          grep -R "enable row level security" supabase/migrations/*heartbeat*.sql
+          grep -R "revoke all" supabase/migrations/*heartbeat*.sql
+          grep -R "service_role" supabase/migrations/*heartbeat*.sql
+          grep -R "Raw cardiac signals" supabase/migrations/*heartbeat*.sql
+          grep -R "device_attestation_id" supabase/migrations/*heartbeat*.sql
+          grep -R "device_integrity_digest" supabase/migrations/*heartbeat*.sql
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          forbidden = re.compile(r"\b(raw_cardiac|raw_ecg|raw_ppg|cardiac_signal|ecg_signal|ppg_signal)\b", re.I)
+          for path in Path("supabase/migrations").glob("*heartbeat*.sql"):
+              for line_number, line in enumerate(path.read_text().splitlines(), 1):
+                  stripped = line.strip()
+                  if not stripped or stripped.startswith("--") or stripped.lower().startswith("comment on "):
+                      continue
+                  if forbidden.search(line):
+                      raise SystemExit(f"Forbidden raw biometric storage token: {path}:{line_number}")
+          PY

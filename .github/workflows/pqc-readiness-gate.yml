@@ -1,0 +1,78 @@
+name: PQC Readiness Gate
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**pqc*.sql'
+      - 'docs/security/post-quantum-governance.md'
+      - '.github/workflows/pqc-readiness-gate.yml'
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Supabase role contracts
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN;
+          SQL
+      - name: Apply PQC migrations
+        run: |
+          for f in $(find supabase/migrations -maxdepth 1 -type f -name '*pqc*.sql' | sort); do
+            echo "Applying $f"
+            psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"
+          done
+      - name: Verify PQ-CGL security contracts
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            missing_tables integer;
+            rls_failures integer;
+            missing_algorithms integer;
+            unsafe_key_columns integer;
+          BEGIN
+            SELECT count(*) INTO missing_tables
+            FROM (VALUES
+              ('pqc','algorithm_registry'),('pqc','crypto_assets'),('pqc','crypto_policies'),
+              ('pqc','key_registry'),('pqc','migration_register'),('pqc','vendor_registry'),
+              ('pqc','verification_events'),('evidence','signature_envelopes')
+            ) required(schema_name, table_name)
+            WHERE to_regclass(format('%I.%I', schema_name, table_name)) IS NULL;
+            IF missing_tables <> 0 THEN RAISE EXCEPTION 'PQ-CGL missing % required tables', missing_tables; END IF;
+
+            SELECT count(*) INTO rls_failures
+            FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname IN ('pqc','evidence') AND c.relkind='r' AND NOT c.relrowsecurity;
+            IF rls_failures <> 0 THEN RAISE EXCEPTION 'PQ-CGL RLS contract failed for % tables', rls_failures; END IF;
+
+            SELECT count(*) INTO missing_algorithms
+            FROM (VALUES ('ML-KEM'),('ML-DSA'),('SLH-DSA')) a(code)
+            WHERE NOT EXISTS (SELECT 1 FROM pqc.algorithm_registry r WHERE r.algorithm_code=a.code);
+            IF missing_algorithms <> 0 THEN RAISE EXCEPTION 'PQC standards baseline incomplete'; END IF;
+
+            SELECT count(*) INTO unsafe_key_columns
+            FROM information_schema.columns
+            WHERE table_schema='pqc' AND table_name='key_registry'
+              AND lower(column_name) IN ('private_key','secret_key','key_material','seed','mnemonic');
+            IF unsafe_key_columns <> 0 THEN RAISE EXCEPTION 'Private key material column detected in pqc.key_registry'; END IF;
+          END $$;
+          SQL
