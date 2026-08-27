@@ -39,3 +39,24 @@ jobs:
       - name: Guard WIM transaction authority
         run: |
           ! grep -R -E "(insert|update|delete)[[:space:]]+(into[[:space:]]+)?wim\.(transactions|settlement_requests|source_coin_events)" setc/cruds --include='*.sql' -i
+
+  cruds-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: setc/cruds/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: setc/cruds/frontend/package-lock.json
+      - name: Install pinned frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run E09 contract tests
+        run: npm test
+      - name: Build production frontend
+        run: npm run build
+      - name: Verify hosting package
+        run: npm run test:sites
