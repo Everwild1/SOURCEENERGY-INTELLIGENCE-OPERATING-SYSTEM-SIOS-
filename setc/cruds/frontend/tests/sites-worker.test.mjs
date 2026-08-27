@@ -1,7 +1,37 @@
 import assert from "node:assert/strict";
 import { access } from "node:fs/promises";
 import test from "node:test";
-import worker from "../worker/index.js";
+import worker, { createWorker } from "../worker/index.js";
+
+test("proxies the live universe through server-side gateway credentials", async () => {
+  let upstreamRequest;
+  const proxyWorker = createWorker(async (input, init) => {
+    upstreamRequest = new Request(input, init);
+    return new Response(JSON.stringify({ contractVersion: "cruds-e09.v1" }), {
+      headers: { "content-type": "application/json", "cache-control": "public, max-age=60" },
+    });
+  });
+
+  const response = await proxyWorker.fetch(new Request("https://example.test/api/universe"), {
+    CRUDS_API_URL: "https://gateway.example/functions/v1/cruds-public-universe/",
+    CRUDS_API_KEY: "publishable-test-key",
+    ASSETS: { fetch: async () => new Response("unused", { status: 500 }) },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(upstreamRequest.url, "https://gateway.example/functions/v1/cruds-public-universe/universe");
+  assert.equal(upstreamRequest.headers.get("apikey"), "publishable-test-key");
+  assert.equal(response.headers.get("cache-control"), "public, max-age=60");
+});
+
+test("fails closed when the live gateway is not configured", async () => {
+  const response = await worker.fetch(new Request("https://example.test/api/universe"), {
+    ASSETS: { fetch: async () => new Response("unused", { status: 500 }) },
+  });
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "gateway_unavailable" });
+});
 
 test("serves existing static assets without a fallback", async () => {
   const calls = [];
