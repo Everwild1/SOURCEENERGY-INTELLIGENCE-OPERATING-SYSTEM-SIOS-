@@ -1,0 +1,62 @@
+create table cruds.work_contributors (
+  id uuid primary key default gen_random_uuid(),
+  work_id uuid not null references cruds.works(id) on delete cascade,
+  creator_id uuid references cruds.creators(id),
+  contributor_name text,
+  contributor_role text not null,
+  contribution_notes text,
+  identity_reference text,
+  created_at timestamptz not null default now(),
+  check (creator_id is not null or length(trim(coalesce(contributor_name,''))) > 0)
+);
+
+create table cruds.work_media (
+  id uuid primary key default gen_random_uuid(),
+  work_id uuid not null references cruds.works(id) on delete cascade,
+  media_type text not null check (media_type in ('image','video','audio','document','link','other')),
+  media_url text not null,
+  caption text,
+  sort_order integer not null default 0,
+  provenance_reference text,
+  created_at timestamptz not null default now()
+);
+
+create table cruds.provenance_corrections (
+  id uuid primary key default gen_random_uuid(),
+  provenance_record_id uuid not null references cruds.provenance_records(id),
+  prior_state jsonb not null,
+  corrected_state jsonb not null,
+  reason text not null,
+  evidence_reference text,
+  created_at timestamptz not null default now()
+);
+
+create table cruds.witness_verification_requests (
+  id uuid primary key default gen_random_uuid(),
+  work_id uuid not null references cruds.works(id),
+  request_reference text not null unique,
+  request_status text not null default 'requested' check (request_status in ('requested','pending','accepted','rejected','failed','cancelled')),
+  requested_digest text,
+  request_payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table cruds.witness_verifications
+  add column request_id uuid references cruds.witness_verification_requests(id),
+  add column authority_name text not null default 'Witness Grid / approved evidence authority',
+  add column authority_confirmation_reference text;
+
+alter table cruds.work_contributors enable row level security;
+alter table cruds.work_media enable row level security;
+alter table cruds.provenance_corrections enable row level security;
+alter table cruds.witness_verification_requests enable row level security;
+
+revoke all on cruds.work_contributors from anon, authenticated;
+revoke all on cruds.work_media from anon, authenticated;
+revoke all on cruds.provenance_corrections from anon, authenticated;
+revoke all on cruds.witness_verification_requests from anon, authenticated;
+
+comment on table cruds.provenance_corrections is 'Append-only correction evidence; prior provenance history is preserved.';
+comment on table cruds.witness_verification_requests is 'Outbound verification orchestration only. CRUDS does not perform or fabricate cryptographic authorship verification.';
+comment on table cruds.work_media is 'Portfolio/media metadata linked to a CRUDS work; media storage authority may reside externally.';

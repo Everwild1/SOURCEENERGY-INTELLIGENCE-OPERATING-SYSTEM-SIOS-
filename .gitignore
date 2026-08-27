@@ -18,3 +18,8 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+
+# Node and local build artifacts
+node_modules/
+dist/
+work/
