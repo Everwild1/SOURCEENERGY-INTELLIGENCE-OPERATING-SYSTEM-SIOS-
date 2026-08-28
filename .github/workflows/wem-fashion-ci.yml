@@ -5,6 +5,7 @@ on:
     paths:
       - 'supabase/migrations/*wem_fashion*.sql'
       - 'setc/fashion/**'
+      - 'docs/wem-fashion/**'
       - 'tests/test_wem_fashion_*.py'
       - '.github/workflows/wem-fashion-ci.yml'
   push:
@@ -12,6 +13,7 @@ on:
     paths:
       - 'supabase/migrations/*wem_fashion*.sql'
       - 'setc/fashion/**'
+      - 'docs/wem-fashion/**'
       - 'tests/test_wem_fashion_*.py'
       - '.github/workflows/wem-fashion-ci.yml'
 
@@ -42,6 +44,11 @@ jobs:
         run: |
           count=$(grep -c "enable row level security" supabase/migrations/20260827185837_wem_fashion_wf_db_001_foundation.sql)
           test "$count" -eq 14
+      - name: Verify WF-DB-002 contract exists
+        run: |
+          test -f docs/wem-fashion/WEM-FASHION-011-api-contract.md
+          grep -F 'Client applications MUST NOT receive direct table mutation privileges' docs/wem-fashion/WEM-FASHION-011-api-contract.md
+          grep -F 'no UPDATE or DELETE lifecycle-event endpoint' docs/wem-fashion/WEM-FASHION-011-api-contract.md
       - name: Run Fashion Python tests when present
         shell: bash
         run: |
