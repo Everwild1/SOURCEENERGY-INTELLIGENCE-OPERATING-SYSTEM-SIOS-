@@ -1,0 +1,40 @@
+name: Ecology Block CI
+
+on:
+  pull_request:
+    paths:
+      - 'setc/ecology/**'
+      - '.github/workflows/ecology-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'setc/ecology/**'
+      - '.github/workflows/ecology-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ecology-governance-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile Ecology package
+        run: python -m compileall -q setc/ecology
+      - name: Run Ecology tests
+        run: python -m unittest discover -s setc/ecology/tests -p 'test_*.py' -v
+      - name: Guard Source Coin ledger authority
+        run: |
+          ! grep -R -n -E '(insert|update|delete).*(source_coin|ledger|balance|treasury|supply)' setc/ecology --include='*.py' --include='*.sql' -i
+      - name: Guard WIM transaction authority
+        run: |
+          ! grep -R -n -E '(insert|update|delete)[[:space:]]+(into[[:space:]]+)?wim\.(transactions|settlement_requests|source_coin_events)' setc/ecology --include='*.sql' -i
+      - name: Guard HEI fiduciary and IP authority
+        run: |
+          ! grep -R -n -E '(insert|update|delete)[[:space:]]+(into[[:space:]]+)?(public\.)?hei_(ip_ownership|fiduciary_authorities|procurement_awards)' setc/ecology --include='*.sql' -i
+      - name: Guard Capitalization finality authority
+        run: |
+          ! grep -R -n -E '(insert|update|delete)[[:space:]]+(into[[:space:]]+)?capitalization\.(treasury_accounts|settlement_confirmations|capital_deployments)' setc/ecology --include='*.sql' -i
