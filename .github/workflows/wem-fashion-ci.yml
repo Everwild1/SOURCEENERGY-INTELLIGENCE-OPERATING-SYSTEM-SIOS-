@@ -1,0 +1,55 @@
+name: WEM Fashion CI
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*wem_fashion*.sql'
+      - 'setc/fashion/**'
+      - 'tests/test_wem_fashion_*.py'
+      - '.github/workflows/wem-fashion-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/*wem_fashion*.sql'
+      - 'setc/fashion/**'
+      - 'tests/test_wem_fashion_*.py'
+      - '.github/workflows/wem-fashion-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fashion-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify WF-DB-001 migration chain
+        run: |
+          test -f supabase/migrations/20260827185837_wem_fashion_wf_db_001_foundation.sql
+          test -f supabase/migrations/20260827190352_wem_fashion_wf_db_001_append_only_hardening.sql
+      - name: Guard canonical authority boundaries
+        run: |
+          ! grep -R -E "create[[:space:]]+table[[:space:]]+fashion\.(organizations|creators|works|rights|licenses|consents|transactions|settlement_requests|shipments|commodities)" supabase/migrations/*wem_fashion*.sql -i
+      - name: Guard settlement mutation authority
+        run: |
+          ! grep -R -E "(insert|update|delete)[[:space:]]+(into[[:space:]]+)?(wim\.(transactions|settlement_requests|source_coin_events)|source_coin|settlement)" supabase/migrations/*wem_fashion*.sql -i
+      - name: Verify lifecycle append-only hardening
+        run: |
+          grep -F "revoke update, delete on fashion.circular_lifecycle_events from service_role" supabase/migrations/20260827190352_wem_fashion_wf_db_001_append_only_hardening.sql
+          grep -F "for insert to service_role" supabase/migrations/20260827190352_wem_fashion_wf_db_001_append_only_hardening.sql
+          ! grep -E "create policy .*circular.* for all" supabase/migrations/20260827190352_wem_fashion_wf_db_001_append_only_hardening.sql -i
+      - name: Verify RLS enablement baseline
+        run: |
+          count=$(grep -c "enable row level security" supabase/migrations/20260827185837_wem_fashion_wf_db_001_foundation.sql)
+          test "$count" -eq 14
+      - name: Run Fashion Python tests when present
+        shell: bash
+        run: |
+          shopt -s nullglob
+          tests=(tests/test_wem_fashion_*.py)
+          if ((${#tests[@]})); then
+            python -m pip install pytest
+            python -m pytest -q "${tests[@]}"
+          else
+            echo "No Fashion Python tests yet; SQL boundary gates passed."
+          fi
