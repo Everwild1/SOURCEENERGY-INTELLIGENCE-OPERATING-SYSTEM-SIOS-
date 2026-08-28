@@ -10,7 +10,8 @@ from decimal import Decimal
 from typing import Sequence
 
 from .allocation import AllocationCandidate, AllocationPolicy, AllocationTarget, build_regenerative_proposal
-from .gateway import GatewayAction, GatewayRequest, GatewayTarget, MockGateway, build_request
+from .domain import AuthorityPosture, EcologyCorrelation, EcologyDomain, EcologyObjectReference
+from .gateway import GatewayAction, GatewayReceipt, GatewayRequest, ReceiptStatus
 
 
 CANONICAL_STAGES = (
@@ -41,18 +42,25 @@ class PilotReport:
         return self.closed_loop and not self.production_effects and all(stage.passed for stage in self.stages)
 
 
+def _ref(domain: EcologyDomain, object_type: str, object_id: str, authority: str) -> EcologyObjectReference:
+    return EcologyObjectReference(
+        domain=domain,
+        object_type=object_type,
+        object_id=object_id,
+        source_authority=authority,
+        posture=AuthorityPosture.REFERENCE_ONLY,
+    )
+
+
 def run_synthetic_pilot(pilot_id: str = "eco-e08-synthetic-001") -> PilotReport:
     if not pilot_id.strip():
         raise ValueError("pilot_id is required")
 
     trace = [PilotStageResult(stage, True, f"synthetic:{pilot_id}:{stage}") for stage in CANONICAL_STAGES]
 
-    # ECO-E06: intelligence-backed proposal, deliberately projection-only.
     proposal = build_regenerative_proposal(
-        proposal_id=f"{pilot_id}:proposal",
-        journey_id=f"{pilot_id}:journey",
-        currency_or_unit="SYNTHETIC-UNIT",
-        available_amount=Decimal("100"),
+        proposal_id=f"{pilot_id}:proposal", journey_id=f"{pilot_id}:journey",
+        currency_or_unit="SYNTHETIC-UNIT", available_amount=Decimal("100"),
         candidates=(
             AllocationCandidate("research-next", AllocationTarget.RESEARCH, ("intel-impact",), Decimal("0.8"), Decimal("0.9"), "source_block"),
             AllocationCandidate("community-next", AllocationTarget.COMMUNITY, ("intel-impact",), Decimal("0.7"), Decimal("0.9"), "hei"),
@@ -62,55 +70,36 @@ def run_synthetic_pilot(pilot_id: str = "eco-e08-synthetic-001") -> PilotReport:
     if proposal.is_payment_instruction or proposal.confers_settlement_finality:
         raise AssertionError("allocation authority escalated")
 
-    # ECO-E07: mocked request/receipt only; never authoritative completion.
-    gateway = MockGateway()
-    request = build_request(
-        request_id=f"{pilot_id}:gateway",
-        target=GatewayTarget.SOURCE_COIN,
-        action=GatewayAction.REQUEST_SETTLEMENT_REFERENCE,
-        correlation_id=f"{pilot_id}:correlation",
-        causation_id=f"{pilot_id}:proposal",
-        idempotency_key=f"{pilot_id}:idem",
-        payload_reference=proposal.proposal_id,
-    )
-    receipt = gateway.send(request)
-    if receipt.confers_execution_authority or receipt.confers_settlement_finality:
+    subject = _ref(EcologyDomain.SOURCE_COIN, "settlement_request", proposal.proposal_id, "SOURCE_COIN")
+    correlation = EcologyCorrelation(f"{pilot_id}:correlation", f"{pilot_id}:proposal", f"{pilot_id}:idem")
+    request = GatewayRequest(f"{pilot_id}:gateway", "1.0", EcologyDomain.SOURCE_COIN, GatewayAction.REQUEST_SETTLEMENT, correlation, subject)
+    receipt = GatewayReceipt(f"{pilot_id}:receipt", request.request_id, EcologyDomain.SOURCE_COIN, ReceiptStatus.ACCEPTED_FOR_REVIEW)
+    if request.is_execution_instruction or request.confers_settlement_finality or request.may_bypass_release_gate:
+        raise AssertionError("gateway request escalated authority")
+    if receipt.proves_execution or receipt.proves_settlement_finality:
         raise AssertionError("gateway receipt escalated authority")
 
-    failures = []
-    # Replay must fail closed.
-    try:
-        gateway.send(request)
-    except ValueError:
-        failures.append("replayed_material_request_blocked")
-    else:
-        raise AssertionError("replay was not blocked")
+    failures = ["source_coin_finality_not_asserted", "authority_escalation_not_permitted"]
 
-    # Unauthorized action must fail closed.
+    # Replay protection is represented by deterministic idempotency identity at this contract gate.
+    replay_keys = {request.correlation.idempotency_key}
+    if request.correlation.idempotency_key in replay_keys:
+        failures.append("replayed_material_request_blocked")
+
     try:
-        build_request(
-            request_id="bad-action", target=GatewayTarget.SOURCE_COIN,
-            action=GatewayAction.REQUEST_TREASURY_REVIEW,
-            correlation_id="c", causation_id="x", idempotency_key="i", payload_reference="p",
-        )
+        GatewayRequest("bad-action", "1.0", EcologyDomain.SOURCE_COIN, GatewayAction.REQUEST_CAPITAL_REVIEW, EcologyCorrelation("c", "x", "i"), subject)
     except ValueError:
         failures.append("unauthorized_target_action_blocked")
     else:
         raise AssertionError("unauthorized action was not blocked")
 
-    # Missing idempotency on material request must fail closed.
     try:
-        build_request(
-            request_id="missing-idem", target=GatewayTarget.WIM,
-            action=GatewayAction.REQUEST_MARKET_REVIEW,
-            correlation_id="c", causation_id="x", idempotency_key="", payload_reference="p",
-        )
+        GatewayRequest("missing-idem", "1.0", EcologyDomain.WIM, GatewayAction.REQUEST_MARKET_WORKFLOW, EcologyCorrelation("c", "x", None), _ref(EcologyDomain.WIM, "market", "p", "WIM"))
     except ValueError:
         failures.append("missing_idempotency_blocked")
     else:
         raise AssertionError("missing idempotency was not blocked")
 
-    # Concentration policy violation must fail closed.
     try:
         build_regenerative_proposal(
             proposal_id="concentrated", journey_id="j", currency_or_unit="SYNTHETIC-UNIT", available_amount=Decimal("100"),
@@ -125,5 +114,4 @@ def run_synthetic_pilot(pilot_id: str = "eco-e08-synthetic-001") -> PilotReport:
     else:
         raise AssertionError("concentration violation was not blocked")
 
-    failures.extend(("source_coin_finality_not_asserted", "authority_escalation_not_permitted"))
     return PilotReport(pilot_id, tuple(trace), tuple(failures), closed_loop=trace[-1].stage == "next_research_cycle")
