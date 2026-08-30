@@ -1,0 +1,45 @@
+name: SourceEnergy One CI
+
+on:
+  pull_request:
+    paths:
+      - 'docs/sourceenergy-one/**'
+      - '.github/workflows/sourceenergy-one-ci.yml'
+  push:
+    branches:
+      - 'sourceenergy-one/**'
+    paths:
+      - 'docs/sourceenergy-one/**'
+      - '.github/workflows/sourceenergy-one-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required SourceEnergy One contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f docs/sourceenergy-one/contracts/api-contracts-v1.md
+          test -f docs/sourceenergy-one/contracts/control-plane-v1.md
+          test -f docs/sourceenergy-one/contracts/heartbeat-identity-assurance-v1.md
+      - name: Verify HeartBeatID fail-closed and privacy language
+        shell: bash
+        run: |
+          set -euo pipefail
+          f=docs/sourceenergy-one/contracts/heartbeat-identity-assurance-v1.md
+          grep -qi 'must not store raw ECG' "$f"
+          grep -qi 'not by itself authorization' "$f"
+          grep -qi 'adapter remains disabled' "$f"
+          grep -qi 'licensing' "$f"
+          grep -qi 'no biometric-derived private keys' "$f"
+      - name: Verify human authorization boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -qi 'human approval' docs/sourceenergy-one/contracts/api-contracts-v1.md
+          grep -qi 'Consequential SourceCube adapters remain disabled' docs/sourceenergy-one/contracts/control-plane-v1.md
