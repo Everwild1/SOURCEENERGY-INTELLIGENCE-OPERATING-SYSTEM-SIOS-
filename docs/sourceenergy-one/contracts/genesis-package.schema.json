@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sourceenergy.example/schemas/sourceenergy-one/genesis-package.schema.json",
+  "title": "SourceEnergy One Genesis Package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "subjectId",
+    "purposeProfileVersion",
+    "codex24InterpretationVersion",
+    "mission",
+    "vision",
+    "purpose",
+    "impactThesis",
+    "approval",
+    "provenance"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "subjectId": { "type": "string", "minLength": 1 },
+    "purposeProfileVersion": { "type": "string", "minLength": 1 },
+    "codex24InterpretationVersion": { "type": "string", "minLength": 1 },
+    "mission": { "type": "string", "minLength": 1 },
+    "vision": { "type": "string", "minLength": 1 },
+    "purpose": { "type": "string", "minLength": 1 },
+    "impactThesis": { "type": "string", "minLength": 1 },
+    "impactHorizons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["horizon", "statement"],
+        "properties": {
+          "horizon": { "enum": ["1Y", "5Y", "10Y", "25Y", "50Y", "100Y"] },
+          "statement": { "type": "string" }
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "approvedBy", "approvedAt"],
+      "properties": {
+        "status": { "const": "approved" },
+        "approvedBy": { "type": "string", "minLength": 1 },
+        "approvedAt": { "type": "string", "format": "date-time" },
+        "consentReceiptId": { "type": "string" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceRefs", "artifactHashes"],
+      "properties": {
+        "evidenceRefs": { "type": "array", "items": { "type": "string" } },
+        "artifactHashes": { "type": "array", "items": { "type": "string" } },
+        "modelProvenanceRef": { "type": "string" }
+      }
+    }
+  }
+}
