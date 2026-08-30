@@ -25,6 +25,7 @@
     {"id":"C003","mutation":"use invalid HMAC","expected_http":401,"expected_code":"INVALID_SIGNATURE"},
     {"id":"C004","mutation":"change payload after hash/signature","expected_http":401,"expected_code":"PAYLOAD_HASH_MISMATCH_OR_INVALID_SIGNATURE"},
     {"id":"C005","mutation":"client_code=unknown","expected_http":403,"expected_code":"CLIENT_NOT_ALLOWED"},
+    {"id":"C006","mutation":"request timestamp outside adapter clock skew window","expected_code":"REQUEST_TIMESTAMP_OUTSIDE_ALLOWED_WINDOW"},
     {"id":"C007","mutation":"reuse accepted nonce","expected_code":"REPLAY_REJECTED"},
     {"id":"C008","mutation":"reuse accepted idempotency_key","expected_code":"DUPLICATE_NO_SECOND_EXECUTION"},
     {"id":"C009","mutation":"use non-allowlisted setc_org_oid","expected_code":"ORG_NOT_ALLOWED"},
