@@ -4,12 +4,16 @@ on:
   pull_request:
     paths:
       - 'docs/sourceenergy-one/**'
+      - 'src/sourceenergy_one/**'
+      - 'tests/sourceenergy_one/**'
       - '.github/workflows/sourceenergy-one-ci.yml'
   push:
     branches:
       - 'sourceenergy-one/**'
     paths:
       - 'docs/sourceenergy-one/**'
+      - 'src/sourceenergy_one/**'
+      - 'tests/sourceenergy_one/**'
       - '.github/workflows/sourceenergy-one-ci.yml'
 
 permissions:
@@ -43,3 +47,13 @@ jobs:
           set -euo pipefail
           grep -qi 'human approval' docs/sourceenergy-one/contracts/api-contracts-v1.md
           grep -qi 'Consequential SourceCube adapters remain disabled' docs/sourceenergy-one/contracts/control-plane-v1.md
+
+  heartbeat-assertion-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run executable HeartBeat assertion safety tests
+        run: python -m unittest discover -s tests/sourceenergy_one -p 'test_*.py' -v
