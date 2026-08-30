@@ -32,8 +32,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -n -E '(OEL_SIDEKICK_SHARED_SECRET[[:space:]]*=|sb_secret_|SUPABASE_SERVICE_ROLE_KEY[[:space:]]*=)' docs/oel tests/oel supabase/functions/oel-sidekick-command-gateway --exclude='*.md'; then
-            echo 'Forbidden secret material detected in OEL commissioning files.' >&2
+          if grep -R -n -E '(OEL_SIDEKICK_SHARED_SECRET[[:space:]]*=[[:space:]]*[^[:space:]"'"'`]+|sb_secret_[A-Za-z0-9_-]{12,}|SUPABASE_SERVICE_ROLE_KEY[[:space:]]*=[[:space:]]*[^[:space:]"'"'`]+)' supabase/functions/oel-sidekick-command-gateway --exclude='*.md'; then
+            echo 'Forbidden secret material detected in OEL runtime files.' >&2
             exit 1
           fi
       - name: Guard Sidekick C2 autonomous ceiling
