@@ -7,10 +7,30 @@ from src.sourceenergy_one.genesis_experience import GenesisExperienceContext, ca
 
 
 REQUIRED_IMPACT_HORIZONS = ("present", "1", "5", "10", "25", "50", "100")
+REQUIRED_4P_DIMENSIONS = ("purpose", "product", "people", "profit")
 
 
 class GenesisBoundaryError(ValueError):
     """Raised when an authoritative Genesis candidate fails a governance invariant."""
+
+
+@dataclass(frozen=True)
+class FourPDimension:
+    statement: str
+    evidence_refs: Sequence[str]
+    source_hash: str
+    version: str
+
+
+@dataclass(frozen=True)
+class FourPProfile:
+    purpose: FourPDimension
+    product: FourPDimension
+    people: FourPDimension
+    profit: FourPDimension
+    approved_by: str
+    approval_attestation: str
+    version: str = "4p-v1"
 
 
 @dataclass(frozen=True)
@@ -30,6 +50,7 @@ class GenesisCandidate:
     jurisdiction: str
     authorizing_actor_id: str
     authorization_attestation: str
+    economic_4p_profile: FourPProfile
     prior_genesis_id: str | None = None
 
 
@@ -38,6 +59,19 @@ def _required_text(name: str, value: str) -> str:
     if not normalized:
         raise GenesisBoundaryError(f"{name} is required")
     return normalized
+
+
+def _validate_4p(profile: FourPProfile) -> None:
+    _required_text("economic_4p_profile.version", profile.version)
+    _required_text("economic_4p_profile.approved_by", profile.approved_by)
+    _required_text("economic_4p_profile.approval_attestation", profile.approval_attestation)
+    for name in REQUIRED_4P_DIMENSIONS:
+        dimension = getattr(profile, name)
+        _required_text(f"economic_4p_profile.{name}.statement", dimension.statement)
+        _required_text(f"economic_4p_profile.{name}.source_hash", dimension.source_hash)
+        _required_text(f"economic_4p_profile.{name}.version", dimension.version)
+        if not dimension.evidence_refs or any(not ref.strip() for ref in dimension.evidence_refs):
+            raise GenesisBoundaryError(f"economic_4p_profile.{name} requires evidence")
 
 
 def validate_candidate(context: GenesisExperienceContext, candidate: GenesisCandidate) -> None:
@@ -70,9 +104,21 @@ def validate_candidate(context: GenesisExperienceContext, candidate: GenesisCand
     if missing_horizons:
         raise GenesisBoundaryError(f"impact horizons incomplete: {', '.join(missing_horizons)}")
 
+    _validate_4p(candidate.economic_4p_profile)
+
+
+def _dimension_payload(dimension: FourPDimension) -> dict:
+    return {
+        "statement": dimension.statement,
+        "evidence_refs": sorted(dimension.evidence_refs),
+        "source_hash": dimension.source_hash,
+        "version": dimension.version,
+    }
+
 
 def canonical_payload(candidate: GenesisCandidate) -> dict:
     """Return the immutable-record payload; raw Purpose Discovery narrative is intentionally excluded."""
+    profile = candidate.economic_4p_profile
     return {
         "subject_id": candidate.subject_id,
         "subject_type": candidate.subject_type,
@@ -89,6 +135,16 @@ def canonical_payload(candidate: GenesisCandidate) -> dict:
         "jurisdiction": candidate.jurisdiction,
         "authorizing_actor_id": candidate.authorizing_actor_id,
         "authorization_attestation": candidate.authorization_attestation,
+        "human_approved": True,
+        "economic_4p_profile": {
+            "version": profile.version,
+            "approved_by": profile.approved_by,
+            "approval_attestation": profile.approval_attestation,
+            "purpose": _dimension_payload(profile.purpose),
+            "product": _dimension_payload(profile.product),
+            "people": _dimension_payload(profile.people),
+            "profit": _dimension_payload(profile.profit),
+        },
         "prior_genesis_id": candidate.prior_genesis_id,
     }
 
