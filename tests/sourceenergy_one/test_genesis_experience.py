@@ -1,6 +1,6 @@
 import unittest
 
-from sourceenergy_one.genesis_experience import (
+from src.sourceenergy_one.genesis_experience import (
     GenesisExperienceContext,
     GenesisStage,
     can_create_genesis,
