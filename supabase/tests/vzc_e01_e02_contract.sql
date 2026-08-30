@@ -1,4 +1,4 @@
--- VZC E01-E04 contract smoke assertions.
+-- VZC E01-E05 contract smoke assertions.
 -- Intended for controlled CI/test database execution.
 begin;
 
@@ -45,5 +45,18 @@ do $$ declare d uuid; r uuid; dec uuid; begin
  update vzc.control_requests set request_state='authorized', authority_reference='AUTH-CI-E04' where control_request_id=r;
  insert into vzc.control_execution_receipts(control_request_id,authority_decision_id,executing_system_ref,execution_state)
  values(r,dec,'authoritative-controller','accepted');
+end $$;
+
+-- E05: a drone mission cannot be marked authority-validated from spatial/mission presence alone.
+do $$ declare b uuid; begin
+ insert into vzc.mobility_safety_bindings(mode,source_schema,source_table,source_record_key,binding_role,evidence_state)
+ values ('drone','rgl','drone_missions','CI-VZC-E05','mission','integration_designed') returning mobility_binding_id into b;
+ begin
+  insert into vzc.drone_safety_authority_checks(mobility_binding_id,mission_reference,authorization_state)
+  values (b,'CI-VZC-E05','validated');
+  raise exception 'Expected drone authority evidence constraint failure did not occur';
+ exception when check_violation then null; end;
+ insert into vzc.drone_safety_authority_checks(mobility_binding_id,mission_reference,jurisdiction_code,airspace_authority_ref,flight_authorization_ref,authorization_state)
+ values (b,'CI-VZC-E05','TEST','competent-authority:test','flight-auth:test','validated');
 end $$;
 rollback;
