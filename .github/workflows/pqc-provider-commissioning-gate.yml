@@ -1,0 +1,181 @@
+name: PQC Provider Commissioning Gate
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**pqc*.sql'
+      - 'supabase/tests/pqc_provider_commissioning.sql'
+      - 'docs/security/pqc-provider-commissioning.md'
+      - '.github/workflows/pqc-provider-commissioning-gate.yml'
+  workflow_dispatch:
+
+jobs:
+  provider-commissioning-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create isolated Supabase contracts
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN;
+          CREATE SCHEMA IF NOT EXISTS extensions;
+          CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
+          CREATE TABLE public.codex_registry (
+            id text PRIMARY KEY
+          );
+
+          CREATE TABLE public.system_heartbeat_registry (
+            observed_at timestamptz NOT NULL DEFAULT now()
+          );
+          SQL
+
+      - name: Apply ordered CVI, DPOT, PQC, and commissioning migrations
+        run: |
+          migrations=(
+            supabase/migrations/20260825220153_pqc_control_plane_baseline.sql
+            supabase/migrations/20260825220212_pqc_service_role_rls_policies.sql
+            supabase/migrations/20260825220439_pqc_verification_vendor_and_inventory_controls.sql
+            supabase/migrations/20260825221058_pqc_readiness_scoring_and_governance.sql
+            supabase/migrations/20260826050046_qri_001_quantum_readiness_extension.sql
+            supabase/migrations/20260831200540_cvi_live_control_plane.sql
+            supabase/migrations/20260831200600_cvi_private_api_permissions.sql
+            supabase/migrations/20260831202006_dpot_trace_intelligence_engine.sql
+            supabase/migrations/20260831202220_dpot_cvi_entry_002_baseline_seed.sql
+            supabase/migrations/20260831205453_pqc_hybrid_evidence_pilot.sql
+            supabase/migrations/20260831205723_pqc_due_diligence_reference_hardening.sql
+            supabase/migrations/20260831213724_pqc_provider_commissioning_control_plane.sql
+          )
+
+          for migration in "${migrations[@]}"; do
+            if [[ ! -f "$migration" ]]; then
+              echo "Missing required migration: $migration" >&2
+              exit 1
+            fi
+            echo "Applying $migration"
+            psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$migration"
+          done
+
+      - name: Verify provider commissioning posture
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            missing_tables integer;
+            rls_failures integer;
+            unsafe_functions integer;
+            v_label text;
+            v_operational_status text;
+            v_count integer;
+          BEGIN
+            SELECT count(*) INTO missing_tables
+            FROM (VALUES
+              ('pqc','provider_assessments'),
+              ('pqc','provider_evidence_items'),
+              ('pqc','provider_selection_decisions'),
+              ('pqc','key_ceremonies'),
+              ('pqc','key_ceremony_authorizations'),
+              ('pqc','interoperability_tests')
+            ) required(schema_name,table_name)
+            WHERE to_regclass(format('%I.%I',schema_name,table_name)) IS NULL;
+
+            IF missing_tables <> 0 THEN
+              RAISE EXCEPTION 'Provider commissioning control plane is missing % required tables', missing_tables;
+            END IF;
+
+            SELECT count(*) INTO rls_failures
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname='pqc'
+              AND c.relname IN (
+                'provider_assessments',
+                'provider_evidence_items',
+                'provider_selection_decisions',
+                'key_ceremonies',
+                'key_ceremony_authorizations',
+                'interoperability_tests'
+              )
+              AND c.relkind='r'
+              AND NOT c.relrowsecurity;
+
+            IF rls_failures <> 0 THEN
+              RAISE EXCEPTION 'Provider commissioning RLS failed for % tables', rls_failures;
+            END IF;
+
+            SELECT count(*) INTO unsafe_functions
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid=p.pronamespace
+            WHERE n.nspname='pqc'
+              AND p.proname IN (
+                'block_provider_governance_mutation',
+                'guard_key_registry_activation',
+                'guard_hybrid_profile_activation'
+              )
+              AND (
+                p.prosecdef
+                OR p.proconfig IS NULL
+                OR NOT EXISTS (
+                  SELECT 1 FROM unnest(p.proconfig) cfg
+                  WHERE cfg LIKE 'search_path=%'
+                )
+              );
+
+            IF unsafe_functions <> 0 THEN
+              RAISE EXCEPTION 'Provider commissioning function security contract failed for % functions', unsafe_functions;
+            END IF;
+
+            SELECT commissioning_label INTO v_label
+            FROM pqc.provider_commissioning_status;
+
+            IF v_label <> 'PROVIDER_PREFERRED_AWAITING_HUMAN_APPROVAL' THEN
+              RAISE EXCEPTION 'Unexpected provider commissioning label: %', v_label;
+            END IF;
+
+            SELECT status_label INTO v_operational_status
+            FROM pqc.operational_pqc_status;
+
+            IF v_operational_status <> 'PQC_GOVERNED_NOT_YET_PQC_ENFORCED' THEN
+              RAISE EXCEPTION 'Commissioning migration overstated operational PQC posture: %', v_operational_status;
+            END IF;
+
+            SELECT count(*) INTO v_count
+            FROM pqc.provider_assessments
+            WHERE commissioning_state IN ('APPROVED_FOR_PILOT','APPROVED_FOR_PRODUCTION');
+
+            IF v_count <> 0 THEN
+              RAISE EXCEPTION 'Provider approval was inferred without accountable authorization';
+            END IF;
+
+            SELECT count(*) INTO v_count
+            FROM pqc.key_registry
+            WHERE status='active'
+              AND algorithm_code IN ('ML-DSA-65','ML-DSA','SLH-DSA');
+
+            IF v_count <> 0 THEN
+              RAISE EXCEPTION 'Commissioning baseline unexpectedly contains an active PQC key';
+            END IF;
+          END $$;
+          SQL
+
+      - name: Run provider commissioning fail-closed tests
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f supabase/tests/pqc_provider_commissioning.sql
