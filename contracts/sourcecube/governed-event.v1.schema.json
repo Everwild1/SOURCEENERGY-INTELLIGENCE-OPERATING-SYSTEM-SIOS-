@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sourceenergy.gold/contracts/sourcecube/governed-event.v1.schema.json",
+  "title": "SourceCube Governed Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "tenant_id",
+    "cube_uid",
+    "event_type",
+    "information_stage",
+    "source",
+    "time",
+    "subject",
+    "payload",
+    "evidence",
+    "governance",
+    "integrity"
+  ],
+  "properties": {
+    "schema_version": {"const": "sourceenergy.governed-event/1.0"},
+    "event_id": {"type": "string", "format": "uuid"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "cube_uid": {"type": "string", "minLength": 1},
+    "event_type": {"type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)+$"},
+    "information_stage": {
+      "enum": [
+        "observation",
+        "inference",
+        "scenario",
+        "recommendation",
+        "decision",
+        "authorization",
+        "execution",
+        "outcome"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_type", "collector", "reference", "collected_at"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "source_type": {"type": "string", "minLength": 1},
+        "collector": {"type": "string", "minLength": 1},
+        "reference": {"type": "string", "minLength": 1},
+        "collected_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "time": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed_at", "valid_from", "valid_to", "recorded_at"],
+      "properties": {
+        "observed_at": {"type": "string", "format": "date-time"},
+        "valid_from": {"type": "string", "format": "date-time"},
+        "valid_to": {"type": ["string", "null"], "format": "date-time"},
+        "recorded_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "place": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "jurisdiction": {"type": "string"},
+        "canonical_place_id": {"type": "string"},
+        "geometry": {"type": ["object", "null"]}
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["node_id", "node_type"],
+      "properties": {
+        "node_id": {"type": "string", "minLength": 1},
+        "node_type": {"type": "string", "minLength": 1},
+        "external_identifiers": {"type": "object"}
+      }
+    },
+    "payload": {"type": "object"},
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority_tier",
+        "validation_state",
+        "confidence",
+        "corroboration",
+        "contradiction_open"
+      ],
+      "properties": {
+        "authority_tier": {"type": "string", "minLength": 1},
+        "validation_state": {"type": "string", "minLength": 1},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "corroboration": {"type": "array", "items": {"type": "string"}},
+        "contradiction_open": {"type": "boolean"}
+      }
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sensitivity", "autonomy_ceiling", "decision_eligible", "policy_refs"],
+      "properties": {
+        "sensitivity": {"enum": ["public", "internal", "confidential", "restricted"]},
+        "autonomy_ceiling": {"enum": ["C0", "C1", "C2", "C3", "C4", "C5", "C6"]},
+        "decision_eligible": {"type": "boolean"},
+        "policy_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content_sha256", "idempotency_key", "parent_event_ids"],
+      "properties": {
+        "content_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "idempotency_key": {"type": "string", "minLength": 1},
+        "parent_event_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}}
+      }
+    }
+  }
+}

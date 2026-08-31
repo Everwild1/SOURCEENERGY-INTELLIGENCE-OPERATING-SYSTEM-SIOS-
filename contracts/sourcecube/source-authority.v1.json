@@ -1,0 +1,60 @@
+{
+  "registry_version": "sourcecube.source-authority/1.0",
+  "status": "implementation_baseline_pending_evidence_steward_ratification",
+  "sources": [
+    {
+      "source_id": "sp-dji-indices",
+      "source_type": "authoritative_index_provider",
+      "authority_scope": ["index_definition", "index_level", "constituent_methodology"],
+      "freshness_class": "market_session"
+    },
+    {
+      "source_id": "cboe-vix",
+      "source_type": "authoritative_exchange_provider",
+      "authority_scope": ["vix_level", "vix_methodology"],
+      "freshness_class": "intraday"
+    },
+    {
+      "source_id": "us-treasury",
+      "source_type": "authoritative_government_source",
+      "authority_scope": ["treasury_yield"],
+      "freshness_class": "daily"
+    },
+    {
+      "source_id": "sec-edgar",
+      "source_type": "authoritative_regulatory_filing",
+      "authority_scope": ["issuer_filing", "reported_risk", "reported_financials"],
+      "freshness_class": "filing_event"
+    },
+    {
+      "source_id": "google-finance",
+      "source_type": "secondary_market_aggregator",
+      "authority_scope": ["price_cross_check"],
+      "freshness_class": "best_effort"
+    },
+    {
+      "source_id": "yahoo-finance",
+      "source_type": "secondary_market_aggregator",
+      "authority_scope": ["price_volume_cross_check"],
+      "freshness_class": "best_effort"
+    },
+    {
+      "source_id": "reuters",
+      "source_type": "institutional_reporting",
+      "authority_scope": ["market_context", "attributed_reporting"],
+      "freshness_class": "publication_event"
+    },
+    {
+      "source_id": "bloomberg",
+      "source_type": "institutional_reporting",
+      "authority_scope": ["market_context", "attributed_reporting"],
+      "freshness_class": "publication_event"
+    }
+  ],
+  "rules": {
+    "commentary_cannot_override_primary_measurement": true,
+    "stale_inputs_block_escalation": true,
+    "contradictions_remain_visible": true,
+    "derived_indicators_require_input_lineage": true
+  }
+}
