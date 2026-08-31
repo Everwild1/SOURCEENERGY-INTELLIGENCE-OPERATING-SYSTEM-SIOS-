@@ -4,8 +4,14 @@ on:
   pull_request:
     paths:
       - 'supabase/migrations/**pqc*.sql'
+      - 'supabase/migrations/**qri*.sql'
+      - 'supabase/migrations/**cvi*.sql'
+      - 'supabase/migrations/**dpot*.sql'
+      - 'supabase/tests/pqc*.sql'
       - 'docs/security/post-quantum-governance.md'
+      - 'docs/security/pqc-*.md'
       - '.github/workflows/pqc-readiness-gate.yml'
+  workflow_dispatch:
 
 jobs:
   contract:
@@ -27,20 +33,51 @@ jobs:
       PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
-      - name: Create Supabase role contracts
+
+      - name: Create isolated Supabase role and extension contracts
         run: |
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE anon NOLOGIN;
           CREATE ROLE authenticated NOLOGIN;
           CREATE ROLE service_role NOLOGIN;
+          CREATE SCHEMA IF NOT EXISTS extensions;
+          CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
+          -- Minimal upstream contracts required by the isolated CVI migration set.
+          CREATE TABLE public.codex_registry (
+            id text PRIMARY KEY
+          );
+          CREATE TABLE public.system_heartbeat_registry (
+            observed_at timestamptz NOT NULL DEFAULT now()
+          );
           SQL
-      - name: Apply PQC migrations
+
+      - name: Apply ordered PQC, QRI, CVI, and DPOT migrations
         run: |
-          for f in $(find supabase/migrations -maxdepth 1 -type f -name '*pqc*.sql' | sort); do
+          migrations=(
+            supabase/migrations/20260825220153_pqc_control_plane_baseline.sql
+            supabase/migrations/20260825220212_pqc_service_role_rls_policies.sql
+            supabase/migrations/20260825220439_pqc_verification_vendor_and_inventory_controls.sql
+            supabase/migrations/20260825221058_pqc_readiness_scoring_and_governance.sql
+            supabase/migrations/20260826050046_qri_001_quantum_readiness_extension.sql
+            supabase/migrations/20260831200540_cvi_live_control_plane.sql
+            supabase/migrations/20260831200600_cvi_private_api_permissions.sql
+            supabase/migrations/20260831202006_dpot_trace_intelligence_engine.sql
+            supabase/migrations/20260831202220_dpot_cvi_entry_002_baseline_seed.sql
+            supabase/migrations/20260831205453_pqc_hybrid_evidence_pilot.sql
+            supabase/migrations/20260831205723_pqc_due_diligence_reference_hardening.sql
+          )
+
+          for f in "${migrations[@]}"; do
+            if [[ ! -f "$f" ]]; then
+              echo "Missing required migration: $f" >&2
+              exit 1
+            fi
             echo "Applying $f"
             psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"
           done
-      - name: Verify PQ-CGL security contracts
+
+      - name: Verify PQ-CGL security and posture contracts
         run: |
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
@@ -49,30 +86,136 @@ jobs:
             rls_failures integer;
             missing_algorithms integer;
             unsafe_key_columns integer;
+            unsafe_functions integer;
+            client_schema_access integer;
+            missing_cvi_policies integer;
+            v_status text;
+            v_count integer;
           BEGIN
             SELECT count(*) INTO missing_tables
             FROM (VALUES
-              ('pqc','algorithm_registry'),('pqc','crypto_assets'),('pqc','crypto_policies'),
-              ('pqc','key_registry'),('pqc','migration_register'),('pqc','vendor_registry'),
-              ('pqc','verification_events'),('evidence','signature_envelopes')
+              ('pqc','algorithm_registry'),
+              ('pqc','crypto_assets'),
+              ('pqc','crypto_policies'),
+              ('pqc','key_registry'),
+              ('pqc','migration_register'),
+              ('pqc','vendor_registry'),
+              ('pqc','verification_events'),
+              ('pqc','hybrid_profiles'),
+              ('pqc','protection_templates'),
+              ('evidence','signature_envelopes'),
+              ('evidence','protected_objects'),
+              ('evidence','hybrid_signature_components'),
+              ('evidence','human_authorizations'),
+              ('evidence','protection_gate_events'),
+              ('public','cvi_watchtraces'),
+              ('public','dpot_open_scroll_sessions'),
+              ('public','dpot_trace_runs')
             ) required(schema_name, table_name)
             WHERE to_regclass(format('%I.%I', schema_name, table_name)) IS NULL;
-            IF missing_tables <> 0 THEN RAISE EXCEPTION 'PQ-CGL missing % required tables', missing_tables; END IF;
+            IF missing_tables <> 0 THEN
+              RAISE EXCEPTION 'PQC/CVI control plane missing % required tables', missing_tables;
+            END IF;
 
             SELECT count(*) INTO rls_failures
-            FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-            WHERE n.nspname IN ('pqc','evidence') AND c.relkind='r' AND NOT c.relrowsecurity;
-            IF rls_failures <> 0 THEN RAISE EXCEPTION 'PQ-CGL RLS contract failed for % tables', rls_failures; END IF;
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname IN ('pqc','evidence')
+              AND c.relkind='r'
+              AND NOT c.relrowsecurity;
+            IF rls_failures <> 0 THEN
+              RAISE EXCEPTION 'PQ-CGL RLS contract failed for % tables', rls_failures;
+            END IF;
 
             SELECT count(*) INTO missing_algorithms
-            FROM (VALUES ('ML-KEM'),('ML-DSA'),('SLH-DSA')) a(code)
-            WHERE NOT EXISTS (SELECT 1 FROM pqc.algorithm_registry r WHERE r.algorithm_code=a.code);
-            IF missing_algorithms <> 0 THEN RAISE EXCEPTION 'PQC standards baseline incomplete'; END IF;
+            FROM (VALUES
+              ('ML-KEM'),('ML-DSA'),('SLH-DSA'),
+              ('ML-DSA-65'),('ECDSA-P256-SHA256'),('SHA-384')
+            ) a(code)
+            WHERE NOT EXISTS (
+              SELECT 1 FROM pqc.algorithm_registry r
+              WHERE r.algorithm_code=a.code
+            );
+            IF missing_algorithms <> 0 THEN
+              RAISE EXCEPTION 'PQC/hybrid standards baseline incomplete';
+            END IF;
 
             SELECT count(*) INTO unsafe_key_columns
             FROM information_schema.columns
-            WHERE table_schema='pqc' AND table_name='key_registry'
-              AND lower(column_name) IN ('private_key','secret_key','key_material','seed','mnemonic');
-            IF unsafe_key_columns <> 0 THEN RAISE EXCEPTION 'Private key material column detected in pqc.key_registry'; END IF;
+            WHERE table_schema='pqc'
+              AND table_name='key_registry'
+              AND lower(column_name) IN (
+                'private_key','secret_key','key_material','seed','mnemonic'
+              );
+            IF unsafe_key_columns <> 0 THEN
+              RAISE EXCEPTION 'Private key material column detected in pqc.key_registry';
+            END IF;
+
+            SELECT count(*) INTO unsafe_functions
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid=p.pronamespace
+            WHERE n.nspname IN ('pqc','evidence')
+              AND p.proname IN (
+                'register_protected_object',
+                'evaluate_protected_object',
+                'request_protected_object_transition',
+                'guard_protected_object_reference'
+              )
+              AND (
+                p.prosecdef
+                OR p.proconfig IS NULL
+                OR NOT EXISTS (
+                  SELECT 1 FROM unnest(p.proconfig) cfg
+                  WHERE cfg LIKE 'search_path=%'
+                )
+              );
+            IF unsafe_functions <> 0 THEN
+              RAISE EXCEPTION 'PQC function security contract failed for % functions', unsafe_functions;
+            END IF;
+
+            SELECT count(*) INTO client_schema_access
+            FROM (VALUES
+              ('anon','pqc'),('authenticated','pqc'),
+              ('anon','evidence'),('authenticated','evidence')
+            ) x(role_name,schema_name)
+            WHERE has_schema_privilege(x.role_name,x.schema_name,'USAGE');
+            IF client_schema_access <> 0 THEN
+              RAISE EXCEPTION 'Client roles unexpectedly have PQC/evidence schema usage';
+            END IF;
+
+            SELECT count(*) INTO missing_cvi_policies
+            FROM (VALUES
+              ('cvi_interface_config'),('cvi_nodes'),
+              ('cvi_watchtraces'),('cvi_evidence_events')
+            ) t(table_name)
+            WHERE NOT EXISTS (
+              SELECT 1 FROM pg_policies p
+              WHERE p.schemaname='public'
+                AND p.tablename=t.table_name
+                AND 'service_role'=ANY(p.roles)
+            );
+            IF missing_cvi_policies <> 0 THEN
+              RAISE EXCEPTION 'CVI service-role policy contract failed for % tables', missing_cvi_policies;
+            END IF;
+
+            SELECT status_label INTO v_status
+            FROM pqc.operational_pqc_status;
+            IF v_status <> 'PQC_GOVERNED_NOT_YET_PQC_ENFORCED' THEN
+              RAISE EXCEPTION 'CI must not claim end-to-end PQC; observed %', v_status;
+            END IF;
+
+            SELECT count(*) INTO v_count
+            FROM evidence.protected_objects
+            WHERE object_type='CVI_OPEN_SCROLL'
+              AND metadata->>'trace_id'='CV-ENTRY-002'
+              AND protection_state='HASHED';
+            IF v_count <> 1 THEN
+              RAISE EXCEPTION 'Expected one HASHED CV-ENTRY-002 Open Scroll, observed %', v_count;
+            END IF;
           END $$;
           SQL
+
+      - name: Run hybrid evidence and due-diligence fail-closed tests
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f supabase/tests/pqc_hybrid_evidence_pilot.sql
