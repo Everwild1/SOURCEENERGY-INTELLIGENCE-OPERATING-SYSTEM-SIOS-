@@ -1,0 +1,8 @@
+insert into sourcecubes.provider_runtime_validation(provider_code,validation_mode,endpoint_reference,http_status,content_type,response_bytes,validation_status,evidence_note)
+values('GEBCO-SOURCE','POSTGRES_HTTP_THREDDS_OPENDAP_POINT','https://dap.ceda.ac.uk/thredds/dodsC/bodc/gebco/global/gebco_2026/ice_surface_elevation/netcdf/GEBCO_2026.nc.ascii?elevation[25904:1:25904][24770:1:24770]',200,'text/plain',393,'POINT_EXTRACTION_VALIDATED','Authoritative THREDDS OPeNDAP point extraction returned elevation=1 m at grid cell center lat 17.93541666666667 lon -76.78958333333334 for the Norman Manley reference coordinate. Source value is GEBCO elevation relative to mean sea level and is not canonical SSR EGM96 without reconciliation.');
+
+insert into sourcecubes.vertical_evidence_observations(anchor_candidate_id,latitude,longitude,provider_code,dataset_name,observed_value_m,source_vertical_datum,source_reference_surface,evidence_reference,evidence_payload,canonicalization_eligible)
+values('d9da0740-b856-489d-bc61-a213e001b478'::uuid,17.935,-76.7883333333,'GEBCO-SOURCE','GEBCO_2026 ice_surface_elevation',1,'MEAN_SEA_LEVEL','GEBCO elevation relative to sea level','CEDA THREDDS OPeNDAP GEBCO_2026 point extraction row 25904 col 24770',jsonb_build_object('grid_row',25904,'grid_col',24770,'grid_cell_latitude',17.93541666666667,'grid_cell_longitude',-76.78958333333334,'http_status',200,'variable','elevation','release','GEBCO_2026'),false);
+
+update ecology.ssr_scientific_data_providers set integration_status='point_extraction_validated_datum_reconciliation_required',updated_at=now() where provider_code='GEBCO-SOURCE';
+update sourcecubes.gebco_dataset_manifest set extraction_status='POINT_EXTRACTION_VALIDATED' where manifest_id='GEBCO2026-ICE-NC';

@@ -1,0 +1,11 @@
+create index if not exists rw_entrepreneurs_auth_user_idx on rw.entrepreneurs(auth_user_id);
+create index if not exists rw_enrollments_entrepreneur_idx on rw.enrollments(entrepreneur_id);
+create index if not exists rw_assessments_enrollment_idx on rw.assessments(enrollment_id);
+create index if not exists rw_evidence_assessment_idx on rw.evidence(assessment_id);
+create index if not exists rw_gate_enrollment_idx on rw.gate_decisions(enrollment_id);
+create index if not exists rw_gate_approved_by_idx on rw.gate_decisions(approved_by);
+create index if not exists rw_snapshots_assessment_idx on rw.readiness_snapshots(assessment_id);
+create index if not exists rw_remediation_assessment_idx on rw.remediation_actions(assessment_id);
+create index if not exists rw_remediation_owner_idx on rw.remediation_actions(owner_user_id);
+create index if not exists rw_history_gate_idx on rw.status_history(gate_decision_id);
+create index if not exists rw_history_changed_by_idx on rw.status_history(changed_by);

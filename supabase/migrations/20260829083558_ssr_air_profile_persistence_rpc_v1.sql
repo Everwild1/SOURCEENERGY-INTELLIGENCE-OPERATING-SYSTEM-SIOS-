@@ -1,0 +1,19 @@
+create or replace function public.ssr_air_profile_persist(
+ p_provider_code text,p_dataset_name text,p_evidence_time timestamptz,p_requested_lat double precision,p_requested_lon double precision,p_grid_lat double precision,p_grid_lon double precision,p_profile jsonb,p_quality_gate text,p_retrieval_metadata jsonb
+) returns uuid language plpgsql security definer set search_path=public,ecology as $$ declare v_id uuid; begin
+ if p_provider_code not in ('NASA-MERRA2','NASA-GEOS-CF') then raise exception 'unsupported provider'; end if;
+ if p_quality_gate not in ('PASS_MERRA2_PROFILE','PASS_GEOS_CF_PROFILE') then raise exception 'profile quality gate not satisfied'; end if;
+ insert into ecology.ssr_air_profiles(provider_code,dataset_name,evidence_time,requested_latitude,requested_longitude,grid_latitude,grid_longitude,profile,quality_gate,retrieval_metadata,canonical_cube_address,z_index)
+ values(p_provider_code,p_dataset_name,p_evidence_time,p_requested_lat,p_requested_lon,p_grid_lat,p_grid_lon,p_profile,p_quality_gate,coalesce(p_retrieval_metadata,'{}'::jsonb),null,null)
+ on conflict(provider_code,dataset_name,evidence_time,grid_latitude,grid_longitude) do update set profile=excluded.profile,quality_gate=excluded.quality_gate,retrieval_metadata=excluded.retrieval_metadata,canonical_cube_address=null,z_index=null
+ returning id into v_id; return v_id; end $$;
+create or replace function public.ssr_air_mapping_persist(p_provider_code text,p_evidence_time timestamptz,p_grid_lat double precision,p_grid_lon double precision,p_pressure numeric,p_h double precision,p_candidate_z integer,p_quality_gate text,p_metadata jsonb) returns uuid language plpgsql security definer set search_path=public,ecology as $$ declare v_id uuid; begin
+ if p_provider_code not in ('NASA-MERRA2','NASA-GEOS-CF') then raise exception 'unsupported provider'; end if;
+ insert into ecology.ssr_air_pressure_to_z_mapping(provider_code,evidence_time,grid_latitude,grid_longitude,pressure_level_hpa,geopotential_height_m,derived_geometric_height_m,candidate_ssr_z_index,method,quality_gate,mapping_metadata,source_height_semantics,source_vertical_datum,canonical_identity_authority)
+ values(p_provider_code,p_evidence_time,p_grid_lat,p_grid_lon,p_pressure,p_h,null,p_candidate_z,'provider_native_height_to_3m_candidate_mapping',p_quality_gate,coalesce(p_metadata,'{}'::jsonb)||jsonb_build_object('canonical_identity_authority',false,'derived_geometric_height_withheld',true),case when p_provider_code='NASA-MERRA2' then 'provider_native_geopotential_height_H' else 'provider_native_GEOS_CF_H' end,'not_established_as_EGM96',false)
+ on conflict(provider_code,evidence_time,grid_latitude,grid_longitude,pressure_level_hpa) do update set geopotential_height_m=excluded.geopotential_height_m,derived_geometric_height_m=null,candidate_ssr_z_index=excluded.candidate_ssr_z_index,method=excluded.method,quality_gate=excluded.quality_gate,mapping_metadata=excluded.mapping_metadata,source_height_semantics=excluded.source_height_semantics,source_vertical_datum=excluded.source_vertical_datum,canonical_identity_authority=false
+ returning id into v_id; return v_id; end $$;
+revoke all on function public.ssr_air_profile_persist(text,text,timestamptz,double precision,double precision,double precision,double precision,jsonb,text,jsonb) from public,anon,authenticated;
+revoke all on function public.ssr_air_mapping_persist(text,timestamptz,double precision,double precision,numeric,double precision,integer,text,jsonb) from public,anon,authenticated;
+grant execute on function public.ssr_air_profile_persist(text,text,timestamptz,double precision,double precision,double precision,double precision,jsonb,text,jsonb) to service_role;
+grant execute on function public.ssr_air_mapping_persist(text,timestamptz,double precision,double precision,numeric,double precision,integer,text,jsonb) to service_role;
