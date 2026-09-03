@@ -1,0 +1,11 @@
+checkpoint_code,sprint_day,phase,due_at,title
+SK100-D010,10,COMMISSION,2026-09-12T17:00:00-04:00,Governance baseline
+SK100-D020,20,COMMISSION,2026-09-22T17:00:00-04:00,Integration architecture
+SK100-D030,30,NORMALIZE,2026-10-02T17:00:00-04:00,Canonical node data contract
+SK100-D040,40,NORMALIZE,2026-10-12T17:00:00-04:00,Candidate inventory intake
+SK100-D050,50,NORMALIZE,2026-10-22T17:00:00-04:00,Opportunity Zone verification
+SK100-D060,60,NORMALIZE,2026-11-01T17:00:00-05:00,Interconnection and site screen
+SK100-D070,70,QUALIFY,2026-11-11T17:00:00-05:00,Government-contracting qualification
+SK100-D080,80,QUALIFY,2026-11-21T17:00:00-05:00,Capital and offtake package
+SK100-D090,90,QUALIFY,2026-12-01T17:00:00-05:00,Demonstrator portfolio selection
+SK100-D100,100,HANDOFF,2026-12-11T17:00:00-05:00,Executive gate and operating handoff
