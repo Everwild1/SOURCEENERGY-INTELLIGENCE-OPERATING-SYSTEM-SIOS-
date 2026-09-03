@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sourceenergyglobal.com/schemas/sidekick/node-record.schema.json",
+  "title": "SourceEnergy SideKick Infrastructure Node",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "node_uid",
+    "program_code",
+    "plant_capacity_mw",
+    "opportunity_zone_status",
+    "stage"
+  ],
+  "properties": {
+    "node_uid": {
+      "type": "string",
+      "pattern": "^SE-IN-[A-Z]{2}-[A-Z0-9-]+-[0-9]{4}$"
+    },
+    "program_code": { "const": "SIDEKICK-100D-2026" },
+    "substation_name": { "type": ["string", "null"] },
+    "utility_owner": { "type": ["string", "null"] },
+    "community_name": { "type": ["string", "null"] },
+    "state_code": { "type": ["string", "null"], "pattern": "^[A-Z]{2}$" },
+    "county_name": { "type": ["string", "null"] },
+    "census_tract": { "type": ["string", "null"] },
+    "opportunity_zone_status": {
+      "enum": ["UNVERIFIED", "CANDIDATE", "VERIFIED", "NOT_ELIGIBLE", "EXPIRED"]
+    },
+    "plant_capacity_mw": { "type": "number", "exclusiveMinimum": 0, "default": 5 },
+    "latitude": { "type": ["number", "null"], "minimum": -90, "maximum": 90 },
+    "longitude": { "type": ["number", "null"], "minimum": -180, "maximum": 180 },
+    "stage": {
+      "enum": [
+        "MAPPED",
+        "QOZ_VERIFIED",
+        "COMMUNITY_AUTHORIZED",
+        "SITE_CONTROLLED",
+        "INTERCONNECTION_SCREENED",
+        "CONTRACT_QUALIFIED",
+        "FINANCED",
+        "CONSTRUCTED",
+        "ENERGIZED",
+        "MEASURED"
+      ]
+    },
+    "drive_evidence_folder_id": { "type": ["string", "null"] },
+    "metadata": { "type": "object", "default": {} }
+  }
+}
