@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from datetime import datetime, timezone
 import json
 from pathlib import Path
 
 from setc.wnf7 import (
+    ADAPTER_DEFINITIONS,
+    ADAPTER_VERSION,
     ALL_COMPONENTS,
     ALL_DIMENSIONS,
+    COMPONENT_ADAPTERS,
     COMPONENT_BINDINGS,
     AssessmentRequest,
     AutomatedState,
     ComponentCode,
+    ComponentAssessmentSubmission,
     ConsequenceClass,
     DecisionEligibility,
     Dimension,
@@ -19,8 +24,10 @@ from setc.wnf7 import (
     DimensionState,
     SupabaseWNF7Repository,
     WNF7AssessmentService,
+    WNF7ComponentGateway,
     WNF7ContractError,
     component_binding,
+    component_adapter,
     evaluate_assessment,
 )
 
@@ -49,21 +56,23 @@ def request(
     authority_ref: str | None = "synthetic://authority/current",
     dimension_observations: tuple[DimensionObservation, ...] | None = None,
     interpretive_meaning: str | None = None,
+    operation_code: str | None = None,
 ) -> AssessmentRequest:
-    return AssessmentRequest(
-        assessment_id=assessment_id,
-        component_code=component,
-        profile_code=component_binding(component).profile_code,
-        subject_ref="synthetic://subject/001",
-        correlation_id="CORR-WNF7-001",
-        idempotency_key=idempotency_key,
-        consequence_class=ConsequenceClass.OPERATIONAL,
-        observed_at=NOW,
-        authority_ref=authority_ref,
-        operational_reason="Exercise the WNF-7 runtime contract.",
-        interpretive_meaning=interpretive_meaning,
-        observations=dimension_observations or observations(),
-        metadata={"classification": "SYNTHETIC_NON_PRODUCTION"},
+    adapter = component_adapter(component)
+    return adapter.prepare(
+        ComponentAssessmentSubmission(
+            assessment_id=assessment_id,
+            operation_code=operation_code or adapter.default_operation_code,
+            subject_ref="synthetic://subject/001",
+            correlation_id="CORR-WNF7-001",
+            idempotency_key=idempotency_key,
+            observed_at=NOW,
+            authority_ref=authority_ref,
+            operational_reason="Exercise the WNF-7 runtime contract.",
+            interpretive_meaning=interpretive_meaning,
+            observations=dimension_observations or observations(),
+            metadata={"classification": "SYNTHETIC_NON_PRODUCTION"},
+        )
     )
 
 
@@ -146,6 +155,89 @@ class WNF7RuntimeTests(unittest.TestCase):
                 self.assertEqual(result.automated_state, AutomatedState.PASS)
                 self.assertFalse(result.may_execute)
 
+    def test_all_eight_component_adapters_are_pilot_only_and_non_executing(self):
+        self.assertEqual(set(ADAPTER_DEFINITIONS), set(ALL_COMPONENTS))
+        self.assertEqual(set(COMPONENT_ADAPTERS), set(ALL_COMPONENTS))
+        operation_pairs = set()
+        for component, adapter in COMPONENT_ADAPTERS.items():
+            definition = adapter.definition
+            self.assertEqual(definition.component_code, component)
+            self.assertEqual(definition.adapter_version, ADAPTER_VERSION)
+            self.assertEqual(len(definition.operations), 3)
+            self.assertFalse(definition.production_authorized)
+            self.assertFalse(definition.external_side_effects)
+            self.assertFalse(adapter.may_execute)
+            operation_pairs.update(
+                (component, operation_code) for operation_code in definition.operations
+            )
+        self.assertEqual(len(operation_pairs), 24)
+
+    def test_gateway_routes_every_component_through_its_registered_adapter(self):
+        client = FakeClient()
+        gateway = WNF7ComponentGateway(WNF7AssessmentService(SupabaseWNF7Repository(client)))
+        for index, component in enumerate(ALL_COMPONENTS, start=1):
+            adapter = component_adapter(component)
+            submission = ComponentAssessmentSubmission(
+                assessment_id=f"WNF7-GATEWAY-{index:02d}",
+                operation_code=adapter.default_operation_code,
+                subject_ref=f"synthetic://subject/{component.value.lower()}",
+                correlation_id=f"CORR-WNF7-{index:02d}",
+                idempotency_key=f"IDEM-WNF7-{index:02d}",
+                observed_at=NOW,
+                authority_ref="synthetic://authority/current",
+                operational_reason="Exercise the registered component entry point.",
+                observations=observations(),
+            )
+            receipt = gateway.assess(component, submission)
+            self.assertEqual(receipt.result.component_code, component)
+            self.assertEqual(receipt.result.adapter_code, adapter.definition.adapter_code)
+            self.assertFalse(receipt.may_execute)
+        self.assertEqual(len(client.records), 8)
+
+    def test_adapter_derives_consequence_and_rejects_impact_downgrade(self):
+        prepared = request(
+            ComponentCode.SOURCECOIN,
+            operation_code="TRANSFER_ELIGIBILITY",
+        )
+        self.assertEqual(prepared.consequence_class, ConsequenceClass.CONSEQUENTIAL)
+        downgraded = replace(prepared, consequence_class=ConsequenceClass.ADVISORY)
+        with self.assertRaisesRegex(WNF7ContractError, "requires consequence class"):
+            evaluate_assessment(downgraded)
+
+    def test_adapter_rejects_commands_side_effects_and_secret_metadata(self):
+        adapter = component_adapter(ComponentCode.SIOS)
+        base = dict(
+            assessment_id="WNF7-ADAPTER-SAFETY",
+            operation_code=adapter.default_operation_code,
+            subject_ref="synthetic://subject/safety",
+            correlation_id="CORR-WNF7-SAFETY",
+            idempotency_key="IDEM-WNF7-SAFETY",
+            observed_at=NOW,
+            operational_reason="Reject unsafe adapter material.",
+            observations=observations(),
+        )
+        with self.assertRaisesRegex(WNF7ContractError, "execution command"):
+            ComponentAssessmentSubmission(**base, execution_command={"action": "execute"})
+        with self.assertRaisesRegex(WNF7ContractError, "external side effect"):
+            ComponentAssessmentSubmission(**base, external_side_effect_requested=True)
+        with self.assertRaisesRegex(WNF7ContractError, "prohibited"):
+            ComponentAssessmentSubmission(**base, metadata={"nested": {"private-key": "x"}})
+
+    def test_adapter_rejects_unknown_operation(self):
+        adapter = component_adapter(ComponentCode.SOURCECUBE)
+        submission = ComponentAssessmentSubmission(
+            assessment_id="WNF7-UNKNOWN-OP",
+            operation_code="EXECUTE_TRANSACTION",
+            subject_ref="synthetic://subject/unknown",
+            correlation_id="CORR-WNF7-UNKNOWN",
+            idempotency_key="IDEM-WNF7-UNKNOWN",
+            observed_at=NOW,
+            operational_reason="Reject an unregistered operation.",
+            observations=observations(),
+        )
+        with self.assertRaisesRegex(WNF7ContractError, "unsupported SOURCECUBE"):
+            adapter.prepare(submission)
+
     def test_sourcecoin_and_sourceblock_boundaries_remain_non_executing(self):
         sourcecoin = component_binding(ComponentCode.SOURCECOIN)
         sourceblock = component_binding(ComponentCode.SOURCEBLOCK)
@@ -219,6 +311,9 @@ class WNF7RuntimeTests(unittest.TestCase):
             assessment_id="WNF7-TEST-MISMATCH",
             component_code=ComponentCode.SOURCECUBE,
             profile_code="SETC-PROFILE-7D-001",
+            adapter_code=component_adapter(ComponentCode.SOURCECUBE).definition.adapter_code,
+            adapter_version=ADAPTER_VERSION,
+            operation_code="CONTEXT_CLASSIFICATION",
             subject_ref="synthetic://subject/mismatch",
             correlation_id="CORR-WNF7-MISMATCH",
             idempotency_key="IDEM-WNF7-MISMATCH",
@@ -238,6 +333,7 @@ class WNF7RuntimeTests(unittest.TestCase):
         self.assertTrue(set(schema["required"]).issubset(payload))
         self.assertEqual(len(payload["dimensions"]), 7)
         self.assertEqual(len(payload["dimension_results"]), 7)
+        self.assertEqual(payload["consequence_class"], "OPERATIONAL")
         self.assertTrue(payload["human_review_required"])
         self.assertIsNone(payload["execution_command"])
         self.assertRegex(payload["input_sha256"], r"^[0-9a-f]{64}$")
@@ -253,6 +349,8 @@ class WNF7RuntimeTests(unittest.TestCase):
         self.assertEqual(record["execution_command"], None)
         self.assertTrue(record["human_review_required"])
         self.assertEqual(len(record["dimension_results"]), 7)
+        self.assertEqual(record["adapter_code"], assessment_request.adapter_code)
+        self.assertEqual(record["operation_code"], assessment_request.operation_code)
         self.assertFalse(hasattr(repository, "update"))
         self.assertFalse(hasattr(repository, "delete"))
 

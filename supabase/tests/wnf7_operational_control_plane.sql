@@ -18,6 +18,20 @@ begin
   if v_count<>56 then raise exception 'Expected 56 component controls; observed %',v_count; end if;
   select count(distinct control_summary) into v_count from wnf7.component_dimension_controls;
   if v_count<>56 then raise exception 'Expected 56 component-specific control summaries; observed %',v_count; end if;
+  select count(*) into v_count from wnf7.component_adapter_registry;
+  if v_count<>8 then raise exception 'Expected 8 component adapters; observed %',v_count; end if;
+  if exists(select 1 from wnf7.component_adapter_registry where production_authorized or external_side_effects or lifecycle_state<>'PILOT') then
+    raise exception 'Component adapter registry exceeded pilot assessment-only posture';
+  end if;
+  select count(*) into v_count from wnf7.component_adapter_operations where active and not external_side_effects;
+  if v_count<>24 then raise exception 'Expected 24 active assessment-only adapter operations; observed %',v_count; end if;
+  v_blocked:=false;
+  begin
+    update wnf7.component_adapter_operations
+    set purpose='Mutated operation purpose.'
+    where adapter_code='WNF7-ADAPTER-SETC-001' and operation_code='POLICY_DECISION';
+  exception when others then v_blocked:=true; end;
+  if not v_blocked then raise exception 'Adapter operation registry allowed mutation'; end if;
   select count(*) into v_count from wnf7.pilot_scenarios where pilot_code='PILOT-7D-001';
   if v_count<>15 then raise exception 'Expected 15 scenarios; observed %',v_count; end if;
   if exists(select 1 from wnf7.component_profiles where production_authorized) then
@@ -54,13 +68,15 @@ begin
   ) into v_results from wnf7.dimension_registry;
 
   insert into wnf7.assessment_records(
-    assessment_id,component_code,profile_code,subject_ref,correlation_id,idempotency_key,
+    assessment_id,component_code,profile_code,adapter_code,adapter_version,operation_code,
+    subject_ref,correlation_id,idempotency_key,
     consequence_class,observed_at,authority_ref,operational_reason,dimension_results,
     input_sha256,output_sha256,evaluator_version
   ) values(
-    'WNF7-TEST-PASS','SETC','SETC-PROFILE-7D-001','synthetic://subject/pass','CORR-WNF7-PASS','IDEM-WNF7-PASS',
+    'WNF7-TEST-PASS','SETC','SETC-PROFILE-7D-001','WNF7-ADAPTER-SETC-001','wnf7-adapter-1.0','POLICY_DECISION',
+    'synthetic://subject/pass','CORR-WNF7-PASS','IDEM-WNF7-PASS',
     'OPERATIONAL','2026-09-04T19:00:00Z','synthetic://authority/current','Exercise deterministic runtime aggregation.',v_results,
-    repeat('a',64),repeat('b',64),'wnf7-runtime-1.0'
+    repeat('a',64),repeat('b',64),'wnf7-runtime-1.1'
   ) returning automated_state,decision_eligibility into v_assessment_state,v_eligibility;
   if v_assessment_state<>'PASS' or v_eligibility<>'ELIGIBLE_FOR_HUMAN_DECISION' then
     raise exception 'Passing assessment derived invalid posture: % / %',v_assessment_state,v_eligibility;
@@ -69,15 +85,17 @@ begin
   v_blocked:=false;
   begin
     insert into wnf7.assessment_records(
-      assessment_id,component_code,profile_code,subject_ref,correlation_id,idempotency_key,
+      assessment_id,component_code,profile_code,adapter_code,adapter_version,operation_code,
+      subject_ref,correlation_id,idempotency_key,
       consequence_class,observed_at,authority_ref,operational_reason,dimension_results,
       input_sha256,output_sha256,evaluator_version
     ) values(
-      'WNF7-TEST-MISSING','SETC','SETC-PROFILE-7D-001','synthetic://subject/missing','CORR-WNF7-MISSING','IDEM-WNF7-MISSING',
-      'ADVISORY','2026-09-04T19:00:00Z','synthetic://authority/current','Reject incomplete dimension set.',v_results-6,
-      repeat('c',64),repeat('d',64),'wnf7-runtime-1.0'
+      'WNF7-TEST-MISSING','SETC','SETC-PROFILE-7D-001','WNF7-ADAPTER-SETC-001','wnf7-adapter-1.0','POLICY_DECISION',
+      'synthetic://subject/missing','CORR-WNF7-MISSING','IDEM-WNF7-MISSING',
+      'OPERATIONAL','2026-09-04T19:00:00Z','synthetic://authority/current','Reject incomplete dimension set.',v_results-6,
+      repeat('c',64),repeat('d',64),'wnf7-runtime-1.1'
     );
-  exception when check_violation then v_blocked:=true; end;
+  exception when check_violation or foreign_key_violation then v_blocked:=true; end;
   if not v_blocked then raise exception 'Assessment accepted fewer than seven dimensions'; end if;
 
   select jsonb_agg(
@@ -86,13 +104,15 @@ begin
       else item end
   ) into v_results from jsonb_array_elements(v_results) item;
   insert into wnf7.assessment_records(
-    assessment_id,component_code,profile_code,subject_ref,correlation_id,idempotency_key,
+    assessment_id,component_code,profile_code,adapter_code,adapter_version,operation_code,
+    subject_ref,correlation_id,idempotency_key,
     consequence_class,observed_at,operational_reason,dimension_results,
     input_sha256,output_sha256,evaluator_version
   ) values(
-    'WNF7-TEST-FEAR-REVIEW','SETC','SETC-PROFILE-7D-001','synthetic://subject/fear','CORR-WNF7-FEAR','IDEM-WNF7-FEAR',
-    'ADVISORY','2026-09-04T19:00:00Z','Fear uncertainty must fail closed.',v_results,
-    repeat('e',64),repeat('f',64),'wnf7-runtime-1.0'
+    'WNF7-TEST-FEAR-REVIEW','SETC','SETC-PROFILE-7D-001','WNF7-ADAPTER-SETC-001','wnf7-adapter-1.0','AUTHORITY_REVIEW',
+    'synthetic://subject/fear','CORR-WNF7-FEAR','IDEM-WNF7-FEAR',
+    'OPERATIONAL','2026-09-04T19:00:00Z','Fear uncertainty must fail closed.',v_results,
+    repeat('e',64),repeat('f',64),'wnf7-runtime-1.1'
   ) returning automated_state,decision_eligibility into v_assessment_state,v_eligibility;
   if v_assessment_state<>'BLOCKED' or v_eligibility<>'NOT_ELIGIBLE' then
     raise exception 'Fear uncertainty did not fail closed: % / %',v_assessment_state,v_eligibility;
@@ -106,16 +126,32 @@ begin
   v_blocked:=false;
   begin
     insert into wnf7.assessment_records(
-      assessment_id,component_code,profile_code,subject_ref,correlation_id,idempotency_key,
+      assessment_id,component_code,profile_code,adapter_code,adapter_version,operation_code,
+      subject_ref,correlation_id,idempotency_key,
       consequence_class,observed_at,operational_reason,dimension_results,human_review_required,
       execution_command,input_sha256,output_sha256,evaluator_version
     ) values(
-      'WNF7-TEST-COMMAND','SOURCECUBE','SOURCECUBE-PROFILE-7D-001','synthetic://subject/command','CORR-WNF7-COMMAND','IDEM-WNF7-COMMAND',
-      'CONSEQUENTIAL','2026-09-04T19:00:00Z','Reject executable payload.',v_results,true,
-      '{"action":"execute"}'::jsonb,repeat('1',64),repeat('2',64),'wnf7-runtime-1.0'
+      'WNF7-TEST-COMMAND','SOURCECUBE','SOURCECUBE-PROFILE-7D-001','WNF7-ADAPTER-SOURCECUBE-001','wnf7-adapter-1.0','ADVISORY_PLAN',
+      'synthetic://subject/command','CORR-WNF7-COMMAND','IDEM-WNF7-COMMAND',
+      'ADVISORY','2026-09-04T19:00:00Z','Reject executable payload.',v_results,true,
+      '{"action":"execute"}'::jsonb,repeat('1',64),repeat('2',64),'wnf7-runtime-1.1'
     );
   exception when check_violation then v_blocked:=true; end;
   if not v_blocked then raise exception 'Assessment accepted non-null execution command'; end if;
+
+  v_blocked:=false;
+  begin
+    insert into wnf7.assessment_records(
+      assessment_id,component_code,profile_code,adapter_code,adapter_version,operation_code,
+      subject_ref,correlation_id,idempotency_key,consequence_class,observed_at,authority_ref,
+      operational_reason,dimension_results,input_sha256,output_sha256,evaluator_version
+    ) values(
+      'WNF7-TEST-DOWNGRADE','SETC','SETC-PROFILE-7D-001','WNF7-ADAPTER-SETC-001','wnf7-adapter-1.0','RELEASE_GATE_REVIEW',
+      'synthetic://subject/downgrade','CORR-WNF7-DOWNGRADE','IDEM-WNF7-DOWNGRADE','ADVISORY','2026-09-04T19:00:00Z',
+      'synthetic://authority/current','Reject consequence downgrade.',v_results,repeat('3',64),repeat('4',64),'wnf7-runtime-1.1'
+    );
+  exception when foreign_key_violation then v_blocked:=true; end;
+  if not v_blocked then raise exception 'Assessment accepted an underclassified adapter operation'; end if;
 
   if has_function_privilege('anon','wnf7.derive_automated_state(jsonb)','EXECUTE')
     or has_function_privilege('authenticated','wnf7.derive_automated_state(jsonb)','EXECUTE') then

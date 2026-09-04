@@ -1,6 +1,6 @@
 # WNF-7 operational control plane
 
-Status: runtime and persistence implementation on a feature branch for controlled validation. Production authorization remains false.
+Status: shared runtime, component-adapter, and persistence implementation on a feature branch for controlled validation. Production authorization remains false.
 
 ## Purpose
 
@@ -21,15 +21,35 @@ WNF-7 is a shared control-plane layer, not a ninth product silo. Each component 
 
 ## Runtime flow
 
-1. A trusted component adapter supplies one evidence-backed observation for each of the seven dimensions.
-2. `setc.wnf7` verifies the component/profile binding and orders all seven observations canonically.
-3. The evaluator applies fail-closed aggregation. Any BLOCKED dimension blocks the assessment; any Fear result other than PASS also blocks it.
-4. A REVIEW or approved NOT_APPLICABLE result limits the assessment to simulation and human review.
-5. An all-PASS result is only `ELIGIBLE_FOR_HUMAN_DECISION`; it is not approval and never contains an execution command.
-6. The trusted server adapter writes the result once to `wnf7.assessment_records`. Component plus idempotency key is unique, and updates or deletes are rejected.
-7. SETC and the accountable reviewers may use the immutable record as input to the existing evidence, adjudication, and release-gate process.
+1. A component submits one of its three allowlisted assessment operations through `WNF7ComponentGateway`.
+2. The registered adapter fixes the component, profile, adapter version, operation, and consequence class. Callers cannot downgrade impact classification.
+3. The adapter rejects executable commands, requested external side effects, reserved adapter metadata, and secret-bearing metadata.
+4. The adapter supplies one evidence-backed observation for each of the seven dimensions.
+5. `setc.wnf7` verifies the component/profile/adapter/operation binding and orders all seven observations canonically.
+6. The evaluator applies fail-closed aggregation. Any BLOCKED dimension blocks the assessment; any Fear result other than PASS also blocks it.
+7. A REVIEW or approved NOT_APPLICABLE result limits the assessment to simulation and human review.
+8. An all-PASS result is only `ELIGIBLE_FOR_HUMAN_DECISION`; it is not approval and never contains an execution command.
+9. The trusted server adapter writes the result once to `wnf7.assessment_records`. Component plus idempotency key is unique, and updates or deletes are rejected.
+10. SETC and the accountable reviewers may use the immutable record as input to the existing evidence, adjudication, and release-gate process.
 
 The runtime package includes 56 distinct component/dimension bindings. Each binding identifies the operating focus, canonical control reference, and accountable reviewer role for that component under that dimension.
+
+## Component adapter contract
+
+The code and database share eight versioned adapter identities and 24 allowlisted operations. Every adapter is `PILOT`, `production_authorized = false`, and `external_side_effects = false`.
+
+| Component | Adapter operations | Fixed posture |
+|---|---|---|
+| SETC | `AUTHORITY_REVIEW`, `POLICY_DECISION`, `RELEASE_GATE_REVIEW` | Operational or consequential review; never self-approval |
+| SourceCube | `CONTEXT_CLASSIFICATION`, `EVIDENCE_SYNTHESIS`, `ADVISORY_PLAN` | Informational/advisory only |
+| Codex Veritas | `CLAIM_ASSESSMENT`, `CONTRADICTION_REVIEW`, `PUBLICATION_REVIEW` | Evidence and publication review only |
+| SourceOne | `HUMAN_ACTION_REVIEW`, `APPROVAL_CONTEXT`, `OUTCOME_EXPLANATION` | Presents context; cannot turn interface action into authority |
+| SIOS | `WORKFLOW_TRANSITION_REVIEW`, `CROSS_DOMAIN_HANDOFF`, `RELEASE_READINESS` | Reviews state and handoff; cannot execute or confirm external effects |
+| Sidekick OEL | `WORK_ITEM_INTAKE`, `DELEGATION_REVIEW`, `OUTCOME_REVIEW` | Remains bounded by delegated OEL/SETC authority |
+| SourceCoin | `ECONOMIC_ELIGIBILITY`, `TRANSFER_ELIGIBILITY`, `SETTLEMENT_ELIGIBILITY` | Eligibility only; no economic mutation or finality |
+| SourceBlock | `LIFECYCLE_GATE`, `VALUE_EVIDENCE_REVIEW`, `CLOSURE_REVIEW` | Lifecycle review only; no manufactured value, ownership, or finality |
+
+`WNF7ComponentGateway` is the single application entry point. `component_adapter(...)` also exposes the individual component port when a domain service needs an explicit dependency. Both paths return an assessment receipt whose `may_execute` property is always false.
 
 ## Component responsibilities
 
@@ -53,6 +73,7 @@ Every profile maps to all seven dimensions, producing 56 required component-dime
 Each row requires:
 
 - a canonical component/profile pair;
+- a canonical adapter, adapter version, and allowlisted operation whose fixed consequence class cannot be downgraded;
 - all seven dimension results exactly once;
 - at least one evidence reference and one control reference per dimension;
 - a timezone-aware observation time, correlation ID, and component-scoped idempotency key;
@@ -92,4 +113,4 @@ Automated state and decision eligibility are generated from the seven stored res
 
 ## Validation
 
-Apply the migration in an isolated Postgres 17 or Supabase development branch, then execute `supabase/tests/wnf7_operational_control_plane.sql`. Run `python -m unittest discover -s tests -p 'test_wnf7_*.py' -v` for the shared runtime. CI verifies registry counts, all 56 bindings, component/profile integrity, deterministic aggregation, idempotency, private client access, RLS, null-command enforcement, append-only assessments/evidence/decisions, and the initial HOLD posture.
+Apply the migration in an isolated Postgres 17 or Supabase development branch, then execute `supabase/tests/wnf7_operational_control_plane.sql`. Run `python -m unittest discover -s tests -p 'test_wnf7_*.py' -v` for the shared runtime. CI verifies eight adapters, 24 operations, all 56 dimension bindings, component/profile/adapter integrity, consequence anti-downgrade enforcement, deterministic aggregation, idempotency, private client access, RLS, null-command enforcement, append-only assessments/evidence/decisions, and the initial HOLD posture.

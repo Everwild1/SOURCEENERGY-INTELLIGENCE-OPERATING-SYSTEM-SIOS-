@@ -6,6 +6,7 @@ import hashlib
 import json
 from typing import Any
 
+from .adapters import component_adapter_definition
 from .bindings import component_binding
 from .models import (
     ALL_DIMENSIONS,
@@ -20,7 +21,7 @@ from .models import (
 )
 
 
-EVALUATOR_VERSION = "wnf7-runtime-1.0"
+EVALUATOR_VERSION = "wnf7-runtime-1.1"
 
 
 def _canonical_sha256(payload: Any) -> str:
@@ -48,6 +49,21 @@ def evaluate_assessment(request: AssessmentRequest) -> AssessmentResult:
     if request.profile_code != binding.profile_code:
         raise WNF7ContractError(
             f"profile {request.profile_code} does not govern {request.component_code.value}"
+        )
+    adapter = component_adapter_definition(request.component_code)
+    if request.adapter_code != adapter.adapter_code:
+        raise WNF7ContractError(
+            f"adapter {request.adapter_code} does not govern {request.component_code.value}"
+        )
+    if request.adapter_version != adapter.adapter_version:
+        raise WNF7ContractError(
+            f"unsupported adapter version for {request.component_code.value}: {request.adapter_version}"
+        )
+    operation = adapter.operation(request.operation_code)
+    if request.consequence_class is not operation.consequence_class:
+        raise WNF7ContractError(
+            f"operation {request.operation_code} requires consequence class "
+            f"{operation.consequence_class.value}"
         )
 
     by_dimension = {item.dimension: item for item in request.ordered_observations()}
@@ -109,6 +125,10 @@ def evaluate_assessment(request: AssessmentRequest) -> AssessmentResult:
         "assessment_id": request.assessment_id,
         "component_code": request.component_code.value,
         "profile_code": request.profile_code,
+        "adapter_code": request.adapter_code,
+        "adapter_version": request.adapter_version,
+        "operation_code": request.operation_code,
+        "consequence_class": request.consequence_class.value,
         "observed_at": request.to_input_dict()["observed_at"],
         "dimension_results": [item.to_dict() for item in results],
         "automated_state": automated_state.value,
@@ -126,6 +146,10 @@ def evaluate_assessment(request: AssessmentRequest) -> AssessmentResult:
         assessment_id=request.assessment_id,
         component_code=request.component_code,
         profile_code=request.profile_code,
+        adapter_code=request.adapter_code,
+        adapter_version=request.adapter_version,
+        operation_code=request.operation_code,
+        consequence_class=request.consequence_class,
         observed_at=request.observed_at,
         dimension_results=tuple(results),
         automated_state=automated_state,

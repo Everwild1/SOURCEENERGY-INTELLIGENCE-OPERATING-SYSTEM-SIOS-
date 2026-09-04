@@ -132,6 +132,9 @@ class AssessmentRequest:
     assessment_id: str
     component_code: ComponentCode
     profile_code: str
+    adapter_code: str
+    adapter_version: str
+    operation_code: str
     subject_ref: str
     correlation_id: str
     idempotency_key: str
@@ -150,6 +153,9 @@ class AssessmentRequest:
         for name in (
             "assessment_id",
             "profile_code",
+            "adapter_code",
+            "adapter_version",
+            "operation_code",
             "subject_ref",
             "correlation_id",
             "idempotency_key",
@@ -188,6 +194,9 @@ class AssessmentRequest:
             "pilot_code": self.pilot_code,
             "component_code": self.component_code.value,
             "profile_code": self.profile_code,
+            "adapter_code": self.adapter_code,
+            "adapter_version": self.adapter_version,
+            "operation_code": self.operation_code,
             "subject_ref": self.subject_ref,
             "correlation_id": self.correlation_id,
             "idempotency_key": self.idempotency_key,
@@ -235,6 +244,10 @@ class AssessmentResult:
     assessment_id: str
     component_code: ComponentCode
     profile_code: str
+    adapter_code: str
+    adapter_version: str
+    operation_code: str
+    consequence_class: ConsequenceClass
     observed_at: datetime
     dimension_results: tuple[DimensionResult, ...]
     automated_state: AutomatedState
@@ -257,6 +270,10 @@ class AssessmentResult:
             "assessment_id": self.assessment_id,
             "component_code": self.component_code.value,
             "profile_code": self.profile_code,
+            "adapter_code": self.adapter_code,
+            "adapter_version": self.adapter_version,
+            "operation_code": self.operation_code,
+            "consequence_class": self.consequence_class.value,
             "observed_at": utc_timestamp(self.observed_at),
             "dimensions": [item.dimension.value for item in self.dimension_results],
             "dimension_results": [item.to_dict() for item in self.dimension_results],

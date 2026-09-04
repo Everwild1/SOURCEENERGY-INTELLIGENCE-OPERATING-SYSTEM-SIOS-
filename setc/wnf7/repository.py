@@ -67,6 +67,13 @@ class SupabaseWNF7Repository:
             raise WNF7ContractError("assessment component does not match request")
         if result.profile_code != request.profile_code:
             raise WNF7ContractError("assessment profile does not match request")
+        if (
+            result.adapter_code != request.adapter_code
+            or result.adapter_version != request.adapter_version
+            or result.operation_code != request.operation_code
+            or result.consequence_class is not request.consequence_class
+        ):
+            raise WNF7ContractError("assessment adapter identity does not match request")
         if not result.human_review_required or result.execution_command is not None:
             raise WNF7ContractError("WNF-7 persistence requires human review and a null command")
 
@@ -75,6 +82,9 @@ class SupabaseWNF7Repository:
             "pilot_code": request.pilot_code,
             "component_code": request.component_code.value,
             "profile_code": request.profile_code,
+            "adapter_code": request.adapter_code,
+            "adapter_version": request.adapter_version,
+            "operation_code": request.operation_code,
             "subject_ref": request.subject_ref,
             "correlation_id": request.correlation_id,
             "idempotency_key": request.idempotency_key,

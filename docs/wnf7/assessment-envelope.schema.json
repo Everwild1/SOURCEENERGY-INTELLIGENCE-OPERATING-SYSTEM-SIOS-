@@ -8,6 +8,10 @@
     "assessment_id",
     "component_code",
     "profile_code",
+    "adapter_code",
+    "adapter_version",
+    "operation_code",
+    "consequence_class",
     "observed_at",
     "dimensions",
     "dimension_results",
@@ -42,6 +46,57 @@
     "profile_code": {
       "type": "string",
       "pattern": "^[A-Z0-9_-]+$"
+    },
+    "adapter_code": {
+      "enum": [
+        "WNF7-ADAPTER-SETC-001",
+        "WNF7-ADAPTER-SOURCECUBE-001",
+        "WNF7-ADAPTER-CODEX_VERITAS-001",
+        "WNF7-ADAPTER-SOURCEONE-001",
+        "WNF7-ADAPTER-SIOS-001",
+        "WNF7-ADAPTER-SIDEKICK_OEL-001",
+        "WNF7-ADAPTER-SOURCECOIN-001",
+        "WNF7-ADAPTER-SOURCEBLOCK-001"
+      ]
+    },
+    "adapter_version": {
+      "const": "wnf7-adapter-1.0"
+    },
+    "operation_code": {
+      "enum": [
+        "AUTHORITY_REVIEW",
+        "POLICY_DECISION",
+        "RELEASE_GATE_REVIEW",
+        "CONTEXT_CLASSIFICATION",
+        "EVIDENCE_SYNTHESIS",
+        "ADVISORY_PLAN",
+        "CLAIM_ASSESSMENT",
+        "CONTRADICTION_REVIEW",
+        "PUBLICATION_REVIEW",
+        "HUMAN_ACTION_REVIEW",
+        "APPROVAL_CONTEXT",
+        "OUTCOME_EXPLANATION",
+        "WORKFLOW_TRANSITION_REVIEW",
+        "CROSS_DOMAIN_HANDOFF",
+        "RELEASE_READINESS",
+        "WORK_ITEM_INTAKE",
+        "DELEGATION_REVIEW",
+        "OUTCOME_REVIEW",
+        "ECONOMIC_ELIGIBILITY",
+        "TRANSFER_ELIGIBILITY",
+        "SETTLEMENT_ELIGIBILITY",
+        "LIFECYCLE_GATE",
+        "VALUE_EVIDENCE_REVIEW",
+        "CLOSURE_REVIEW"
+      ]
+    },
+    "consequence_class": {
+      "enum": [
+        "INFORMATIONAL",
+        "ADVISORY",
+        "OPERATIONAL",
+        "CONSEQUENTIAL"
+      ]
     },
     "observed_at": {
       "type": "string",
@@ -245,6 +300,76 @@
       "default": {}
     }
   },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "component_code": { "const": "SETC" },
+            "profile_code": { "const": "SETC-PROFILE-7D-001" },
+            "adapter_code": { "const": "WNF7-ADAPTER-SETC-001" },
+            "operation_code": { "enum": ["AUTHORITY_REVIEW", "POLICY_DECISION", "RELEASE_GATE_REVIEW"] }
+          }
+        },
+        {
+          "properties": {
+            "component_code": { "const": "SOURCECUBE" },
+            "profile_code": { "const": "SOURCECUBE-PROFILE-7D-001" },
+            "adapter_code": { "const": "WNF7-ADAPTER-SOURCECUBE-001" },
+            "operation_code": { "enum": ["CONTEXT_CLASSIFICATION", "EVIDENCE_SYNTHESIS", "ADVISORY_PLAN"] }
+          }
+        },
+        {
+          "properties": {
+            "component_code": { "const": "CODEX_VERITAS" },
+            "profile_code": { "const": "CODEX-VERITAS-PROFILE-7D-001" },
+            "adapter_code": { "const": "WNF7-ADAPTER-CODEX_VERITAS-001" },
+            "operation_code": { "enum": ["CLAIM_ASSESSMENT", "CONTRADICTION_REVIEW", "PUBLICATION_REVIEW"] }
+          }
+        },
+        {
+          "properties": {
+            "component_code": { "const": "SOURCEONE" },
+            "profile_code": { "const": "SOURCEONE-PROFILE-7D-001" },
+            "adapter_code": { "const": "WNF7-ADAPTER-SOURCEONE-001" },
+            "operation_code": { "enum": ["HUMAN_ACTION_REVIEW", "APPROVAL_CONTEXT", "OUTCOME_EXPLANATION"] }
+          }
+        },
+        {
+          "properties": {
+            "component_code": { "const": "SIOS" },
+            "profile_code": { "const": "SIOS-PROFILE-7D-001" },
+            "adapter_code": { "const": "WNF7-ADAPTER-SIOS-001" },
+            "operation_code": { "enum": ["WORKFLOW_TRANSITION_REVIEW", "CROSS_DOMAIN_HANDOFF", "RELEASE_READINESS"] }
+          }
+        },
+        {
+          "properties": {
+            "component_code": { "const": "SIDEKICK_OEL" },
+            "profile_code": { "const": "SIDEKICK-OEL-PROFILE-7D-001" },
+            "adapter_code": { "const": "WNF7-ADAPTER-SIDEKICK_OEL-001" },
+            "operation_code": { "enum": ["WORK_ITEM_INTAKE", "DELEGATION_REVIEW", "OUTCOME_REVIEW"] }
+          }
+        },
+        {
+          "properties": {
+            "component_code": { "const": "SOURCECOIN" },
+            "profile_code": { "const": "SOURCECOIN-PROFILE-7D-001" },
+            "adapter_code": { "const": "WNF7-ADAPTER-SOURCECOIN-001" },
+            "operation_code": { "enum": ["ECONOMIC_ELIGIBILITY", "TRANSFER_ELIGIBILITY", "SETTLEMENT_ELIGIBILITY"] }
+          }
+        },
+        {
+          "properties": {
+            "component_code": { "const": "SOURCEBLOCK" },
+            "profile_code": { "const": "SOURCEBLOCK-PROFILE-7D-001" },
+            "adapter_code": { "const": "WNF7-ADAPTER-SOURCEBLOCK-001" },
+            "operation_code": { "enum": ["LIFECYCLE_GATE", "VALUE_EVIDENCE_REVIEW", "CLOSURE_REVIEW"] }
+          }
+        }
+      ]
+    }
+  ],
   "$defs": {
     "dimensionCode": {
       "enum": [
