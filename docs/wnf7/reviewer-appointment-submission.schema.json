@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sourceenergyglobal.com/schemas/wnf7/reviewer-appointment-submission.schema.json",
+  "title": "WNF-7 Reviewer Appointment Submission",
+  "description": "Strict pre-approval nomination, assignment, acceptance, or hold packet. Validation does not itself appoint a reviewer or confer authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pilot_code",
+    "reviewer_role_code",
+    "reviewer_subject_id",
+    "reviewer_display_ref",
+    "appointment_evidence_ref",
+    "appointed_by_subject_id",
+    "conflict_status",
+    "mobilization_status",
+    "effective_at"
+  ],
+  "properties": {
+    "pilot_code": {"const": "PILOT-7D-001"},
+    "reviewer_role_code": {"$ref": "#/$defs/reviewerRole"},
+    "reviewer_subject_id": {"type": "string", "format": "uuid"},
+    "reviewer_display_ref": {"$ref": "#/$defs/controlledRef"},
+    "appointment_evidence_ref": {"$ref": "#/$defs/controlledRef"},
+    "appointed_by_subject_id": {"type": "string", "format": "uuid"},
+    "conflict_status": {
+      "enum": ["PENDING", "NO_CONFLICT_DECLARED", "CONFLICT_DECLARED", "RECUSED"]
+    },
+    "mobilization_status": {
+      "enum": ["NOMINATED", "ASSIGNED", "ACCEPTED", "HOLD"]
+    },
+    "effective_at": {"type": "string", "format": "date-time"},
+    "accepted_at": {"type": "string", "format": "date-time"},
+    "metadata": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"mobilization_status": {"const": "ACCEPTED"}},
+        "required": ["mobilization_status"]
+      },
+      "then": {
+        "required": ["accepted_at"],
+        "properties": {"conflict_status": {"const": "NO_CONFLICT_DECLARED"}}
+      },
+      "else": {"not": {"required": ["accepted_at"]}}
+    },
+    {
+      "if": {
+        "properties": {
+          "conflict_status": {"enum": ["CONFLICT_DECLARED", "RECUSED"]}
+        },
+        "required": ["conflict_status"]
+      },
+      "then": {"properties": {"mobilization_status": {"const": "HOLD"}}}
+    }
+  ],
+  "$defs": {
+    "controlledRef": {"type": "string", "pattern": "^controlled://", "minLength": 14},
+    "reviewerRole": {
+      "enum": [
+        "QA_LEAD",
+        "TECH_AUTHORITY",
+        "SETC_OWNER",
+        "SOURCECUBE_OWNER",
+        "PILOT_OWNER",
+        "KNOWLEDGE_GOVERNOR"
+      ]
+    }
+  }
+}

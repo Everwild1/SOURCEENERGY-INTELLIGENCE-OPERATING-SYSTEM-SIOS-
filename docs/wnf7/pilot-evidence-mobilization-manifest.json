@@ -2,7 +2,7 @@
   "schema_version": "wnf7-evidence-mobilization-manifest/1.0",
   "manifest_id": "WNF7-EVIDENCE-MOBILIZATION-001",
   "pilot_code": "PILOT-7D-001",
-  "generated_at": "2026-09-04T20:36:14Z",
+  "generated_at": "2026-09-04T22:03:03Z",
   "classification": "CONTROLLED_NON_PRODUCTION",
   "sources": {
     "technical_package": {
@@ -78,7 +78,10 @@
     "open_automated_defects": 0
   },
   "human_control_status": {
+    "system_mode": "SETUP",
+    "human_designer_status": "SYSTEM_DESIGNER_NOT_APPROVER",
     "required_reviewer_roles": 6,
+    "reviewer_assignment_slots_initialized": 6,
     "accepted_reviewer_roles": 0,
     "required_validated_evidence_packets": 15,
     "validated_evidence_packets": 0,
@@ -87,6 +90,7 @@
     "gate_state": "HOLD",
     "derived_operational_readiness": "HOLD_INCOMPLETE",
     "evidence_mobilization_state": "MOBILIZED_PENDING_HUMAN_VALIDATION",
+    "human_control_setup_state": "SYSTEM_SETUP_COMPLETE_AWAITING_HUMAN_ACTION",
     "production_authorized": false
   },
   "covered_components": [
@@ -283,6 +287,7 @@
     }
   ],
   "guardrails": {
+    "system_designer_is_approval_authority": false,
     "stores_private_drive_locations": false,
     "candidate_records_are_validated_evidence": false,
     "technical_integrity_confers_authority": false,

@@ -28,6 +28,16 @@ from .intake import (
     assessment_result_envelope,
     parse_component_submission,
 )
+from .human_control import (
+    AdjudicationDecisionSubmission,
+    AdjudicationStatus,
+    DecisionDisposition,
+    EvidenceFreshness,
+    EvidenceValidationStatus,
+    EvidenceValidationSubmission,
+    parse_adjudication_decision,
+    parse_evidence_validation,
+)
 from .models import (
     ALL_COMPONENTS,
     ALL_DIMENSIONS,
@@ -44,6 +54,13 @@ from .models import (
     WNF7ContractError,
 )
 from .repository import SupabaseWNF7Repository
+from .review import (
+    ReviewerAppointmentSubmission,
+    ReviewerConflictStatus,
+    ReviewerMobilizationStatus,
+    ReviewerRole,
+    parse_reviewer_appointment,
+)
 from .service import AssessmentReceipt, WNF7AssessmentService
 
 __all__ = [
@@ -51,6 +68,8 @@ __all__ = [
     "ALL_DIMENSIONS",
     "ADAPTER_DEFINITIONS",
     "ADAPTER_VERSION",
+    "AdjudicationDecisionSubmission",
+    "AdjudicationStatus",
     "CODEX_VERITAS_ADAPTER",
     "COMPONENT_ADAPTERS",
     "COMPONENT_BINDINGS",
@@ -67,12 +86,20 @@ __all__ = [
     "ComponentCode",
     "ConsequenceClass",
     "DecisionEligibility",
+    "DecisionDisposition",
     "Dimension",
     "DimensionBinding",
     "DimensionObservation",
     "DimensionResult",
     "DimensionState",
+    "EvidenceFreshness",
+    "EvidenceValidationStatus",
+    "EvidenceValidationSubmission",
     "ParsedComponentSubmission",
+    "ReviewerAppointmentSubmission",
+    "ReviewerConflictStatus",
+    "ReviewerMobilizationStatus",
+    "ReviewerRole",
     "SETC_ADAPTER",
     "SIDEKICK_OEL_ADAPTER",
     "SIOS_ADAPTER",
@@ -91,4 +118,7 @@ __all__ = [
     "assessment_result_envelope",
     "evaluate_assessment",
     "parse_component_submission",
+    "parse_adjudication_decision",
+    "parse_evidence_validation",
+    "parse_reviewer_appointment",
 ]

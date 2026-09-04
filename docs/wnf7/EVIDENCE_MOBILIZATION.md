@@ -1,6 +1,6 @@
 # WNF-7 evidence mobilization
 
-Status: the 15-scenario technical package is integrity-verified and registered as pending candidate evidence. Human freshness review, substantive validation, adjudication, authority action, and production authorization have not occurred.
+Status: system setup is complete for the 15-scenario technical package. The evidence is integrity-verified and registered as pending candidate evidence; six reviewer role slots are initialized but unassigned. Human freshness review, substantive validation, adjudication, authority action, and production authorization have not occurred.
 
 ## Control outcome
 
@@ -12,6 +12,7 @@ Those checks establish file and execution-record integrity only. They do not est
 |---|---:|---:|
 | Candidate scenario references mobilized | 15 | 15 |
 | Candidate references with matched package integrity | 15 | 15 |
+| Reviewer assignment slots initialized | 6 | 6 |
 | Accepted reviewer roles | 0 | 6 |
 | Human-validated evidence packets | 0 | 15 |
 | Completed human decisions | 0 | 15 |
@@ -19,6 +20,8 @@ Those checks establish file and execution-record integrity only. They do not est
 | Production authorization | No | Not granted by this process |
 
 The evidence-mobilization state is `MOBILIZED_PENDING_HUMAN_VALIDATION`. The authoritative operational readiness remains `HOLD_INCOMPLETE`.
+
+The pre-approval setup state is `SYSTEM_SETUP_COMPLETE_AWAITING_HUMAN_ACTION`. The current human designer establishes the system but is not thereby appointed to a reviewer role and receives no approval authority.
 
 ## Controlled source model
 
@@ -28,6 +31,12 @@ The evidence-mobilization state is `MOBILIZED_PENDING_HUMAN_VALIDATION`. The aut
 - Each scenario points to `controlled://SRC-011/scenario/SCN-nnn` and carries the SHA-256 of the charter-results artifact. The hash scope is explicitly the shared results artifact, not an independently hashed scenario file.
 
 The machine-readable inventory is `pilot-evidence-mobilization-manifest.json`.
+
+The strict portable contracts for the human stage are:
+
+- `reviewer-appointment-submission.schema.json`;
+- `evidence-validation-submission.schema.json`; and
+- `adjudication-decision-submission.schema.json`.
 
 ## Scenario routing
 
@@ -62,6 +71,8 @@ The mobilization migration:
 - records matched package integrity and a pending-human-review posture;
 - exposes a service-role-only, security-invoker mobilization view; and
 - leaves `wnf7.operational_readiness`, the release gate, and production authorization unchanged.
+
+The human-control setup migration adds all six empty reviewer slots, a role-specific work queue, evidence lineage fields, and database triggers that reject validation or completed adjudication unless the designated reviewer has been accepted with no declared conflict. It also rejects role/scenario mismatches and requires validated evidence before a decision can be completed.
 
 Evidence rows cannot be updated or deleted. A reviewer outcome must therefore be written as a new governed evidence record, preserving the original candidate and its provenance.
 
