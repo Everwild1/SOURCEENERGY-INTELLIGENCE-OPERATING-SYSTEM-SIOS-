@@ -23,7 +23,12 @@
       "enum": [
         "SETC",
         "SOURCECUBE",
-        "SOURCECOIN"
+        "CODEX_VERITAS",
+        "SOURCEONE",
+        "SIOS",
+        "SIDEKICK_OEL",
+        "SOURCECOIN",
+        "SOURCEBLOCK"
       ]
     },
     "profile_code": {
