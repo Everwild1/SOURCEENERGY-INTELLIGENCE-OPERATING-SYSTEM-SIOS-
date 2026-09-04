@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sourceenergyglobal.com/schemas/wnf7/assessment-envelope.schema.json",
+  "title": "WNF-7 Assessment Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assessment_id",
+    "component_code",
+    "profile_code",
+    "observed_at",
+    "dimensions",
+    "automated_state",
+    "decision_eligibility",
+    "execution_command"
+  ],
+  "properties": {
+    "assessment_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "component_code": {
+      "enum": [
+        "SETC",
+        "SOURCECUBE",
+        "SOURCECOIN"
+      ]
+    },
+    "profile_code": {
+      "type": "string",
+      "pattern": "^[A-Z0-9_-]+$"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 7,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "FEAR",
+          "PRESENCE",
+          "WISDOM",
+          "KNOWLEDGE",
+          "UNDERSTANDING",
+          "COUNSEL",
+          "MIGHT_POWER"
+        ]
+      }
+    },
+    "automated_state": {
+      "enum": [
+        "PASS",
+        "REVIEW",
+        "BLOCKED"
+      ]
+    },
+    "decision_eligibility": {
+      "enum": [
+        "ELIGIBLE_FOR_HUMAN_DECISION",
+        "SIMULATION_ONLY",
+        "NOT_ELIGIBLE"
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "authority_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "execution_command": {
+      "type": "null"
+    },
+    "metadata": {
+      "type": "object",
+      "default": {}
+    }
+  }
+}
