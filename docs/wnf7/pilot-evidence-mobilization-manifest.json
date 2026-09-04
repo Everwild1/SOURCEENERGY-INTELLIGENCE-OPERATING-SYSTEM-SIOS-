@@ -2,7 +2,7 @@
   "schema_version": "wnf7-evidence-mobilization-manifest/1.0",
   "manifest_id": "WNF7-EVIDENCE-MOBILIZATION-001",
   "pilot_code": "PILOT-7D-001",
-  "generated_at": "2026-09-04T22:03:03Z",
+  "generated_at": "2026-09-04T22:40:00Z",
   "classification": "CONTROLLED_NON_PRODUCTION",
   "sources": {
     "technical_package": {
@@ -18,6 +18,13 @@
       "name": "WNF-7 Human Adjudication Control Register",
       "version": "1.5",
       "control_state": "READY_FOR_REVIEW",
+      "production_authorization": "NO"
+    },
+    "governance_nomination_register": {
+      "controlled_ref": "SRC-014",
+      "name": "WNF-7 Governance Nomination Register",
+      "location": "CONTROLLED_DRIVE_MASTER_REGISTRY",
+      "control_state": "FIVE_NOMINATED_ONE_AWAITING_INDEPENDENT_CONFIRMATION",
       "production_authorization": "NO"
     }
   },
@@ -82,6 +89,10 @@
     "human_designer_status": "SYSTEM_DESIGNER_NOT_APPROVER",
     "required_reviewer_roles": 6,
     "reviewer_assignment_slots_initialized": 6,
+    "nominated_reviewer_roles": 5,
+    "unassigned_reviewer_roles": 1,
+    "knowledge_governor_designation": "AWAITING_INDEPENDENT_BOARD_CONFIRMATION",
+    "alternate_reviewers": 1,
     "accepted_reviewer_roles": 0,
     "required_validated_evidence_packets": 15,
     "validated_evidence_packets": 0,

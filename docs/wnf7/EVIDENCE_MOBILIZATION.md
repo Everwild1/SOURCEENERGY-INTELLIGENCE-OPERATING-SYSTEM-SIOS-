@@ -1,6 +1,6 @@
 # WNF-7 evidence mobilization
 
-Status: system setup is complete for the 15-scenario technical package. The evidence is integrity-verified and registered as pending candidate evidence; six reviewer role slots are initialized but unassigned. Human freshness review, substantive validation, adjudication, authority action, and production authorization have not occurred.
+Status: system setup is complete for the 15-scenario technical package. The evidence is integrity-verified and registered as pending candidate evidence. Five reviewer roles are nominated, the Knowledge Governor role is staged pending independent board confirmation, and one alternate reviewer is registered in the controlled governance register. No reviewer has accepted, and human freshness review, substantive validation, adjudication, authority action, and production authorization have not occurred.
 
 ## Control outcome
 
@@ -13,6 +13,8 @@ Those checks establish file and execution-record integrity only. They do not est
 | Candidate scenario references mobilized | 15 | 15 |
 | Candidate references with matched package integrity | 15 | 15 |
 | Reviewer assignment slots initialized | 6 | 6 |
+| Primary reviewer roles nominated | 5 | 6 |
+| Primary reviewer roles awaiting independent confirmation | 1 | 0 |
 | Accepted reviewer roles | 0 | 6 |
 | Human-validated evidence packets | 0 | 15 |
 | Completed human decisions | 0 | 15 |
@@ -21,12 +23,13 @@ Those checks establish file and execution-record integrity only. They do not est
 
 The evidence-mobilization state is `MOBILIZED_PENDING_HUMAN_VALIDATION`. The authoritative operational readiness remains `HOLD_INCOMPLETE`.
 
-The pre-approval setup state is `SYSTEM_SETUP_COMPLETE_AWAITING_HUMAN_ACTION`. The current human designer establishes the system but is not thereby appointed to a reviewer role and receives no approval authority.
+The pre-approval setup state is `SYSTEM_SETUP_COMPLETE_AWAITING_HUMAN_ACTION`. The human designer is the proposed Knowledge Governor / Executive Sponsor, but that role remains unassigned until an independent board action confirms it. The design decision does not itself create approval authority.
 
 ## Controlled source model
 
 - `SRC-011` identifies the controlled v1.3 exact-charter execution package.
 - `SRC-013` identifies the controlled v1.5 human adjudication register.
+- `SRC-014` identifies the controlled governance nomination register in the Drive Master Registry. It maps the approved human roster to opaque subject references; GitHub contains no personal email addresses.
 - GitHub and Supabase store only controlled references and integrity metadata. Private Drive locations and document identifiers are intentionally excluded.
 - Each scenario points to `controlled://SRC-011/scenario/SCN-nnn` and carries the SHA-256 of the charter-results artifact. The hash scope is explicitly the shared results artifact, not an independently hashed scenario file.
 
@@ -78,7 +81,7 @@ Evidence rows cannot be updated or deleted. A reviewer outcome must therefore be
 
 ## Required human sequence
 
-1. Appoint and accept all six required reviewer roles with conflict declarations and appointment evidence.
+1. Independently confirm the Knowledge Governor designation, advance each nomination through assignment, and collect conflict declarations and explicit acceptance for all six required reviewer roles.
 2. Review each controlled source, determine freshness, and write a new validation outcome without mutating the candidate record.
 3. Complete one accountable decision for each of the 15 scenarios, including rationale and attestation where required.
 4. Reconcile defects, contradictions, recusals, or remediation before readiness can be recalculated.

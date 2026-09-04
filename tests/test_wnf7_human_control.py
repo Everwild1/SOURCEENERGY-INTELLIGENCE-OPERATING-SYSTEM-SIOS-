@@ -82,10 +82,30 @@ class WNF7HumanControlTests(unittest.TestCase):
         self.assertEqual(control["system_mode"], "SETUP")
         self.assertEqual(control["human_designer_status"], "SYSTEM_DESIGNER_NOT_APPROVER")
         self.assertEqual(control["reviewer_assignment_slots_initialized"], 6)
+        self.assertEqual(control["nominated_reviewer_roles"], 5)
+        self.assertEqual(control["unassigned_reviewer_roles"], 1)
         self.assertEqual(control["accepted_reviewer_roles"], 0)
         self.assertEqual(control["validated_evidence_packets"], 0)
         self.assertEqual(control["completed_decisions"], 0)
         self.assertFalse(control["production_authorized"])
+
+    def test_governance_nomination_manifest_is_opaque_and_non_authorizing(self):
+        path = ROOT / "docs/wnf7/governance-nomination-manifest.json"
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        serialized = json.dumps(manifest).lower()
+        self.assertEqual(len(manifest["primary_role_nominations"]), 5)
+        self.assertEqual(
+            manifest["knowledge_governor_designation"]["appointment_status"],
+            "AWAITING_INDEPENDENT_BOARD_CONFIRMATION",
+        )
+        self.assertEqual(
+            manifest["alternate_reviewer"]["status"],
+            "ALTERNATE_NOT_ASSIGNED_TO_PRIMARY_SLOT",
+        )
+        self.assertNotIn("@sourceenergyglobal.com", serialized)
+        for name in ("peter", "steve", "dahlia", "olivia", "octavia", "justin"):
+            self.assertNotIn(name, serialized)
+        self.assertFalse(manifest["summary"]["production_authorized"])
 
     def test_nomination_packet_is_typed_but_does_not_accept_reviewer(self):
         packet = parse_reviewer_appointment(appointment_payload())

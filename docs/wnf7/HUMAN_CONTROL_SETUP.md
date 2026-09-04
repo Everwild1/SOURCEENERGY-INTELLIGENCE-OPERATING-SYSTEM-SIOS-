@@ -1,6 +1,6 @@
 # WNF-7 human-control system setup
 
-Status: pre-approval infrastructure complete. No reviewer is appointed or accepted, no evidence is human-validated, no adjudication is complete, Gate 3 remains `HOLD`, and production authorization remains false.
+Status: pre-approval infrastructure complete. Five primary reviewers are nominated, the Knowledge Governor / Executive Sponsor designation is staged for independent board confirmation, and one alternate reviewer is recorded in controlled register `SRC-014`. No reviewer is assigned or accepted, no evidence is human-validated, no adjudication is complete, Gate 3 remains `HOLD`, and production authorization remains false.
 
 ## Operating mode
 
@@ -10,14 +10,14 @@ The current operating mode is `SETUP`. The human designer is defining the system
 
 | Control object | Initialized state | Advancement requirement |
 |---|---|---|
-| QA Lead slot | UNASSIGNED | Named subject, appointment evidence, conflict disclosure, acceptance |
-| Technical Authority slot | UNASSIGNED | Named subject, appointment evidence, conflict disclosure, acceptance |
-| SETC Control Owner slot | UNASSIGNED | Named subject, appointment evidence, conflict disclosure, acceptance |
-| SourceCube Technical Owner slot | UNASSIGNED | Named subject, appointment evidence, conflict disclosure, acceptance |
-| Pilot Product Owner slot | UNASSIGNED | Named subject, appointment evidence, conflict disclosure, acceptance |
-| Knowledge Governor / Executive Sponsor slot | UNASSIGNED | Named subject, appointment evidence, conflict disclosure, acceptance |
+| QA Lead slot | NOMINATED | Conflict disclosure, assignment, acceptance |
+| Technical Authority slot | NOMINATED | Conflict disclosure, assignment, acceptance |
+| SETC Control Owner slot | NOMINATED | Conflict disclosure, assignment, acceptance |
+| SourceCube Technical Owner slot | NOMINATED | Conflict disclosure, assignment, acceptance |
+| Pilot Product Owner slot | NOMINATED | Conflict disclosure, assignment, acceptance |
+| Knowledge Governor / Executive Sponsor slot | UNASSIGNED / DESIGNATION STAGED | Independent board confirmation, conflict disclosure, assignment, acceptance |
 
-The six slots route all 15 pilot scenarios through `wnf7.reviewer_mobilization_queue`. The queue exposes assigned scenario count, outstanding evidence-validation count, and outstanding decision count for each role. It is service-role-only and uses invoker security.
+The six slots route all 15 pilot scenarios through `wnf7.reviewer_mobilization_queue`. The queue exposes assigned scenario count, outstanding evidence-validation count, and outstanding decision count for each role. It is service-role-only and uses invoker security. The alternate reviewer remains outside the six primary slots until a controlled replacement is required.
 
 ## Appointment contract
 
@@ -63,4 +63,4 @@ The trusted service also resolves the governed automated-result candidate and ev
 | Release gate | HOLD |
 | Production authorization | false |
 
-The next phase begins only when named nominees and controlled appointment evidence are supplied. Until then, all reviewer roles remain unassigned and all approval counters remain zero.
+The next phase requires independent confirmation of the Knowledge Governor designation plus conflict declarations, assignment, and acceptance for every primary nominee. Nomination alone cannot validate evidence or complete adjudication; all approval counters remain zero.
