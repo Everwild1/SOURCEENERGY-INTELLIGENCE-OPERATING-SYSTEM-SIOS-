@@ -1,0 +1,215 @@
+create schema if not exists wnf7;
+comment on schema wnf7 is 'Private WNF-7 governance and meaning control plane. Service-role-only, evidence-backed, and non-transactional.';
+
+create table wnf7.dimension_registry (
+  dimension_code text primary key,
+  ordinal smallint not null unique check (ordinal between 1 and 7),
+  display_name text not null unique,
+  control_intent text not null
+);
+create table wnf7.component_profiles (
+  profile_code text primary key,
+  component_code text not null check (component_code in ('SETC','SOURCECUBE','SOURCECOIN')),
+  version_label text not null,
+  lifecycle_state text not null check (lifecycle_state in ('DRAFT','PILOT','REVIEW','AUTHORIZED','RETIRED')),
+  operational_scope text not null,
+  execution_boundary text not null,
+  production_authorized boolean not null default false,
+  canonical_source_ref text not null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  check (not production_authorized or lifecycle_state='AUTHORIZED')
+);
+create table wnf7.component_dimension_controls (
+  profile_code text not null references wnf7.component_profiles(profile_code),
+  dimension_code text not null references wnf7.dimension_registry(dimension_code),
+  control_summary text not null,
+  required boolean not null default true,
+  primary key(profile_code,dimension_code)
+);
+create table wnf7.reviewer_roles (
+  role_code text primary key,
+  display_name text not null unique,
+  control_scope text not null,
+  required boolean not null default true
+);
+create table wnf7.pilot_scenarios (
+  scenario_code text primary key,
+  pilot_code text not null,
+  dimension_codes text[] not null check(cardinality(dimension_codes) between 1 and 7),
+  expected_automated_state text not null check(expected_automated_state in ('PASS','REVIEW','BLOCKED')),
+  decision_eligibility text not null check(decision_eligibility in ('ELIGIBLE_FOR_HUMAN_DECISION','SIMULATION_ONLY','NOT_ELIGIBLE')),
+  reviewer_role_code text not null references wnf7.reviewer_roles(role_code),
+  required_evidence text not null,
+  active boolean not null default true
+);
+create table wnf7.reviewer_assignments (
+  assignment_id uuid primary key default gen_random_uuid(),
+  pilot_code text not null,
+  reviewer_role_code text not null references wnf7.reviewer_roles(role_code),
+  reviewer_subject_id uuid,
+  reviewer_display_ref text,
+  appointment_evidence_ref text,
+  conflict_status text not null default 'PENDING' check(conflict_status in ('PENDING','NO_CONFLICT_DECLARED','CONFLICT_DECLARED','RECUSED')),
+  mobilization_status text not null default 'UNASSIGNED' check(mobilization_status in ('UNASSIGNED','NOMINATED','ASSIGNED','ACCEPTED','HOLD')),
+  accepted_at timestamptz,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  unique(pilot_code,reviewer_role_code),
+  check(mobilization_status<>'ACCEPTED' or (reviewer_subject_id is not null and appointment_evidence_ref is not null and conflict_status='NO_CONFLICT_DECLARED' and accepted_at is not null))
+);
+create table wnf7.evidence_items (
+  evidence_id uuid primary key default gen_random_uuid(),
+  scenario_code text not null references wnf7.pilot_scenarios(scenario_code),
+  evidence_ref text not null,
+  source_system text not null,
+  content_sha256 text check(content_sha256 is null or content_sha256 ~ '^[0-9a-f]{64}$'),
+  freshness_status text not null default 'PENDING' check(freshness_status in ('PENDING','CURRENT','STALE','EXPIRED','NOT_APPLICABLE')),
+  validation_status text not null default 'PENDING' check(validation_status in ('PENDING','VALIDATED','GAP','CONTRADICTORY','REJECTED')),
+  observed_at timestamptz,
+  validated_at timestamptz,
+  validated_by uuid,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  check(validation_status<>'VALIDATED' or (freshness_status in ('CURRENT','NOT_APPLICABLE') and validated_at is not null and validated_by is not null))
+);
+create table wnf7.adjudication_decisions (
+  decision_id uuid primary key default gen_random_uuid(),
+  scenario_code text not null references wnf7.pilot_scenarios(scenario_code),
+  reviewer_subject_id uuid not null,
+  reviewer_role_code text not null references wnf7.reviewer_roles(role_code),
+  disposition text not null check(disposition in ('CONFIRM','OVERRIDE','HOLD')),
+  decision_status text not null check(decision_status in ('IN_REVIEW','COMPLETE','HOLD','REMEDIATION_REQUIRED')),
+  rationale_summary text not null,
+  attestation_ref text,
+  supersedes_decision_id uuid references wnf7.adjudication_decisions(decision_id),
+  decided_at timestamptz not null default now(),
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  check(decision_status<>'COMPLETE' or attestation_ref is not null)
+);
+create table wnf7.release_gates (
+  pilot_code text primary key,
+  gate_code text not null,
+  gate_state text not null check(gate_state in ('HOLD','READY_FOR_AUTHORITY_REVIEW','AUTHORIZED','REJECTED')),
+  production_authorized boolean not null default false,
+  authority_attestation_ref text,
+  canonical_register_ref text not null,
+  github_commit_ref text,
+  supabase_validation_ref text,
+  updated_at timestamptz not null default now(),
+  check(not production_authorized or (gate_state='AUTHORIZED' and authority_attestation_ref is not null))
+);
+
+create function wnf7.prevent_record_mutation() returns trigger language plpgsql set search_path='' as $$
+begin
+  raise exception '% is append-only; create a superseding governed record',tg_table_name;
+end;
+$$;
+create trigger evidence_append_only before update or delete on wnf7.evidence_items for each row execute function wnf7.prevent_record_mutation();
+create trigger decisions_append_only before update or delete on wnf7.adjudication_decisions for each row execute function wnf7.prevent_record_mutation();
+
+alter table wnf7.dimension_registry enable row level security;
+alter table wnf7.component_profiles enable row level security;
+alter table wnf7.component_dimension_controls enable row level security;
+alter table wnf7.reviewer_roles enable row level security;
+alter table wnf7.pilot_scenarios enable row level security;
+alter table wnf7.reviewer_assignments enable row level security;
+alter table wnf7.evidence_items enable row level security;
+alter table wnf7.adjudication_decisions enable row level security;
+alter table wnf7.release_gates enable row level security;
+
+revoke all on schema wnf7 from public,anon,authenticated;
+revoke all on all tables in schema wnf7 from public,anon,authenticated;
+revoke all on all sequences in schema wnf7 from public,anon,authenticated;
+revoke execute on function wnf7.prevent_record_mutation() from public,anon,authenticated;
+grant usage on schema wnf7 to service_role;
+grant select,insert,update,delete on all tables in schema wnf7 to service_role;
+grant usage,select on all sequences in schema wnf7 to service_role;
+grant execute on function wnf7.prevent_record_mutation() to service_role;
+
+create policy dimensions_service on wnf7.dimension_registry for all to service_role using(true) with check(true);
+create policy profiles_service on wnf7.component_profiles for all to service_role using(true) with check(true);
+create policy controls_service on wnf7.component_dimension_controls for all to service_role using(true) with check(true);
+create policy roles_service on wnf7.reviewer_roles for all to service_role using(true) with check(true);
+create policy scenarios_service on wnf7.pilot_scenarios for all to service_role using(true) with check(true);
+create policy assignments_service on wnf7.reviewer_assignments for all to service_role using(true) with check(true);
+create policy evidence_service on wnf7.evidence_items for all to service_role using(true) with check(true);
+create policy decisions_service on wnf7.adjudication_decisions for all to service_role using(true) with check(true);
+create policy gates_service on wnf7.release_gates for all to service_role using(true) with check(true);
+
+insert into wnf7.dimension_registry values
+('FEAR',1,'Fear of the Lord','Authority, legitimacy, limits, and fail-closed behavior'),
+('PRESENCE',2,'Presence of the Lord','Identity, existence, provenance, and contextual integrity'),
+('WISDOM',3,'Wisdom','Purpose alignment, long-horizon value, and stewardship'),
+('KNOWLEDGE',4,'Knowledge','Evidence quality, freshness, classification, and traceability'),
+('UNDERSTANDING',5,'Understanding','Context, jurisdiction, affected parties, and consequence analysis'),
+('COUNSEL',6,'Counsel','Review, approval, exception, and escalation pathways'),
+('MIGHT_POWER',7,'Might / Power','Bounded capability, confirmation, idempotency, and execution control');
+
+insert into wnf7.component_profiles(profile_code,component_code,version_label,lifecycle_state,operational_scope,execution_boundary,canonical_source_ref,metadata) values
+('SETC-PROFILE-7D-001','SETC','1.0','PILOT','Authority, evidence, context, counsel, and bounded execution controls','No consequential action without verified authority and accountable human authorization','SETC-PROFILE-7D-001','{}'),
+('SOURCECUBE-PROFILE-7D-001','SOURCECUBE','1.0','PILOT','Context classification, evidence lineage, and advisory recommendations','Advisory-only; outputs cannot authorize transactions or mutate authoritative systems','PILOT-7D-001','{}'),
+('SOURCECOIN-PROFILE-7D-001','SOURCECOIN','1.0','PILOT','Eligibility and governance signals for SourceCoin-related records','No minting, transfer, custody, valuation, redemption, or settlement authority','PILOT-7D-001','{"reference_only":true}');
+
+insert into wnf7.component_dimension_controls
+select p.profile_code,d.dimension_code,
+case d.dimension_code
+when 'FEAR' then 'Resolve authority and deny by default when missing, expired, or out of scope.'
+when 'PRESENCE' then 'Bind canonical identity, time, place, provenance, and version without collision.'
+when 'WISDOM' then 'Demonstrate purpose alignment, stewardship, and durable value.'
+when 'KNOWLEDGE' then 'Require attributable, current, classified, contradiction-aware evidence.'
+when 'UNDERSTANDING' then 'Evaluate jurisdiction, affected parties, uncertainty, and consequences.'
+when 'COUNSEL' then 'Route approvals, dissent, exceptions, escalation, and accountable review.'
+when 'MIGHT_POWER' then 'Constrain capability by authorization, confirmation, idempotency, reversibility, and audit evidence.'
+end,true from wnf7.component_profiles p cross join wnf7.dimension_registry d;
+
+insert into wnf7.reviewer_roles values
+('QA_LEAD','Quality and Assurance Lead','Scenario evidence, defects, and completeness',true),
+('TECH_AUTHORITY','Technical Authority','Schema, validator, ledger, and limitations',true),
+('SETC_OWNER','SETC Control Owner','Authority resolution and fail-closed Fear controls',true),
+('SOURCECUBE_OWNER','SourceCube Technical Owner','Advisory-only behavior, reproducibility, and null command',true),
+('PILOT_OWNER','Pilot Product Owner','Data boundary, privacy, and readiness',true),
+('KNOWLEDGE_GOVERNOR','Knowledge Governor / Executive Sponsor','Final non-production ruling',true);
+
+insert into wnf7.pilot_scenarios values
+('SCN-001','PILOT-7D-001',array['FEAR'],'PASS','ELIGIBLE_FOR_HUMAN_DECISION','SETC_OWNER','Authority and rule references',true),
+('SCN-002','PILOT-7D-001',array['FEAR'],'BLOCKED','NOT_ELIGIBLE','SETC_OWNER','Negative resolver result and governing requirement',true),
+('SCN-003','PILOT-7D-001',array['FEAR'],'BLOCKED','NOT_ELIGIBLE','SETC_OWNER','Authority metadata, expiry, scope, and denial trace',true),
+('SCN-004','PILOT-7D-001',array['PRESENCE'],'REVIEW','SIMULATION_ONLY','TECH_AUTHORITY','Identity registry results and collision trace',true),
+('SCN-005','PILOT-7D-001',array['KNOWLEDGE'],'REVIEW','SIMULATION_ONLY','QA_LEAD','Evidence timestamp and freshness policy',true),
+('SCN-006','PILOT-7D-001',array['KNOWLEDGE'],'REVIEW','SIMULATION_ONLY','QA_LEAD','Both sources, contradiction record, and reviewer route',true),
+('SCN-007','PILOT-7D-001',array['KNOWLEDGE'],'BLOCKED','NOT_ELIGIBLE','QA_LEAD','Prompt/output trace and classification rule',true),
+('SCN-008','PILOT-7D-001',array['WISDOM'],'BLOCKED','NOT_ELIGIBLE','PILOT_OWNER','Purpose statement and architecture rule',true),
+('SCN-009','PILOT-7D-001',array['UNDERSTANDING'],'REVIEW','SIMULATION_ONLY','QA_LEAD','Jurisdiction inputs and unresolved lookup',true),
+('SCN-010','PILOT-7D-001',array['UNDERSTANDING'],'BLOCKED','NOT_ELIGIBLE','QA_LEAD','Affected-party and risk analysis',true),
+('SCN-011','PILOT-7D-001',array['COUNSEL'],'BLOCKED','NOT_ELIGIBLE','KNOWLEDGE_GOVERNOR','Approval matrix and missing approval trace',true),
+('SCN-012','PILOT-7D-001',array['COUNSEL'],'BLOCKED','NOT_ELIGIBLE','KNOWLEDGE_GOVERNOR','Exception policy and lookup result',true),
+('SCN-013','PILOT-7D-001',array['MIGHT_POWER'],'BLOCKED','NOT_ELIGIBLE','SOURCECUBE_OWNER','Idempotency key and replay detection trace',true),
+('SCN-014','PILOT-7D-001',array['MIGHT_POWER'],'REVIEW','SIMULATION_ONLY','SOURCECUBE_OWNER','Instruction trace and missing confirmation',true),
+('SCN-015','PILOT-7D-001',array['FEAR','PRESENCE','WISDOM','KNOWLEDGE','UNDERSTANDING','COUNSEL','MIGHT_POWER'],'BLOCKED','NOT_ELIGIBLE','KNOWLEDGE_GOVERNOR','Before/after records and mutation-isolation trace',true);
+
+insert into wnf7.release_gates values('PILOT-7D-001','GATE-3','HOLD',false,null,'SRC-013',null,null,now());
+
+create view wnf7.operational_readiness with(security_invoker=true) as
+select g.*,
+(select count(*) from wnf7.reviewer_roles where required) reviewer_target,
+(select count(*) from wnf7.reviewer_assignments where pilot_code=g.pilot_code and mobilization_status='ACCEPTED') accepted_reviewers,
+(select count(*) from wnf7.pilot_scenarios where pilot_code=g.pilot_code and active) evidence_target,
+(select count(distinct e.scenario_code) from wnf7.evidence_items e join wnf7.pilot_scenarios s using(scenario_code) where s.pilot_code=g.pilot_code and e.validation_status='VALIDATED') validated_evidence_packets,
+(select count(*) from wnf7.pilot_scenarios where pilot_code=g.pilot_code and active) decision_target,
+(select count(distinct d.scenario_code) from wnf7.adjudication_decisions d join wnf7.pilot_scenarios s using(scenario_code) where s.pilot_code=g.pilot_code and d.decision_status='COMPLETE') completed_decisions,
+case when g.production_authorized then 'PRODUCTION_AUTHORIZED'
+when g.gate_state='AUTHORIZED' then 'AUTHORITY_ATTESTED_NON_PRODUCTION'
+when (select count(*) from wnf7.reviewer_assignments where pilot_code=g.pilot_code and mobilization_status='ACCEPTED')=6
+and (select count(distinct e.scenario_code) from wnf7.evidence_items e join wnf7.pilot_scenarios s using(scenario_code) where s.pilot_code=g.pilot_code and e.validation_status='VALIDATED')=15
+and (select count(distinct d.scenario_code) from wnf7.adjudication_decisions d join wnf7.pilot_scenarios s using(scenario_code) where s.pilot_code=g.pilot_code and d.decision_status='COMPLETE')=15
+then 'READY_FOR_AUTHORITY_REVIEW' else 'HOLD_INCOMPLETE' end derived_readiness
+from wnf7.release_gates g;
+
+revoke all on wnf7.operational_readiness from public,anon,authenticated;
+grant select on wnf7.operational_readiness to service_role;
+comment on table wnf7.evidence_items is 'Append-only evidence references. Never store credentials, private keys, full payment messages, or unnecessary personal data.';
+comment on table wnf7.adjudication_decisions is 'Append-only human decisions; no independent legal, financial, regulatory, custody, minting, transfer, or settlement authority.';
+comment on table wnf7.release_gates is 'Human-controlled release posture. Derived readiness never auto-authorizes production.';
+comment on view wnf7.operational_readiness is 'READY_FOR_AUTHORITY_REVIEW is not authorization.';
