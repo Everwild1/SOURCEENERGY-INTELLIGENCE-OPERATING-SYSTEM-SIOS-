@@ -5,9 +5,9 @@ begin
   select count(*) into v_count from wnf7.dimension_registry;
   if v_count<>7 then raise exception 'Expected 7 dimensions; observed %',v_count; end if;
   select count(*) into v_count from wnf7.component_profiles;
-  if v_count<>3 then raise exception 'Expected 3 component profiles; observed %',v_count; end if;
+  if v_count<>8 then raise exception 'Expected 8 component profiles; observed %',v_count; end if;
   select count(*) into v_count from wnf7.component_dimension_controls;
-  if v_count<>21 then raise exception 'Expected 21 component controls; observed %',v_count; end if;
+  if v_count<>56 then raise exception 'Expected 56 component controls; observed %',v_count; end if;
   select count(*) into v_count from wnf7.pilot_scenarios where pilot_code='PILOT-7D-001';
   if v_count<>15 then raise exception 'Expected 15 scenarios; observed %',v_count; end if;
   if exists(select 1 from wnf7.component_profiles where production_authorized) then
@@ -15,6 +15,12 @@ begin
   end if;
   if not exists(select 1 from wnf7.component_profiles where component_code='SOURCECOIN' and execution_boundary ilike '%No minting%') then
     raise exception 'SourceCoin non-transactional boundary missing';
+  end if;
+  select count(*) into v_count from (values ('SETC'),('SOURCECUBE'),('CODEX_VERITAS'),('SOURCEONE'),('SIOS'),('SIDEKICK_OEL'),('SOURCECOIN'),('SOURCEBLOCK')) required(component_code)
+  where exists(select 1 from wnf7.component_profiles p where p.component_code=required.component_code);
+  if v_count<>8 then raise exception 'Full ecosystem profile coverage incomplete; observed %',v_count; end if;
+  if not exists(select 1 from wnf7.component_profiles where component_code='SOURCEBLOCK' and operational_scope ilike '%value-producing unit%') then
+    raise exception 'Canonical SourceBlock lifecycle definition missing';
   end if;
   select derived_readiness into v_readiness from wnf7.operational_readiness where pilot_code='PILOT-7D-001';
   if v_readiness<>'HOLD_INCOMPLETE' then raise exception 'Pilot must initialize on hold; observed %',v_readiness; end if;
