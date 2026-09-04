@@ -4,7 +4,7 @@ Status: implemented on a feature branch for controlled validation. Production au
 
 ## Purpose
 
-WNF-7 makes the seven dimensions an executable governance and meaning framework across SETC, SourceCube, SourceCoin, and future SourceEnergy components. It records classifications, evidence, accountable adjudications, and release posture without asserting spiritual, legal, financial, regulatory, custody, or settlement authority.
+WNF-7 makes the seven dimensions an executable governance and meaning framework across SETC, SourceCube, Codex Veritas, SourceOne, SIOS, Sidekick OEL, SourceCoin, SourceBlock, and future approved SourceEnergy components. It records classifications, evidence, accountable adjudications, and release posture without asserting spiritual, legal, financial, regulatory, custody, or settlement authority.
 
 ## System boundaries
 
@@ -16,6 +16,21 @@ WNF-7 makes the seven dimensions an executable governance and meaning framework 
 | SETC | Authority resolution, governance evaluation, review routing, and fail-closed control |
 | SourceCube | Context classification, evidence lineage, reproducible advisory analysis, and null-command enforcement |
 | SourceCoin | Eligibility and governance signals only; no minting, transfer, custody, valuation, redemption, or settlement authority |
+
+## Component responsibilities
+
+| Component | WNF-7 operating mandate | Hard boundary |
+|---|---|---|
+| SETC | Authority resolution, governance evaluation, review routing, and fail-closed control | Cannot manufacture external authority |
+| SourceCube | Context classification, evidence lineage, reproducible advisory analysis, and null-command enforcement | Cannot authorize transactions or mutate authoritative systems |
+| Codex Veritas | Provenance, claim state, confidence, contradiction history, supersession, and truth/meaning separation | Interpretation cannot substitute for evidence or authority |
+| SourceOne | Human-facing explanations, warnings, approvals, and outcome visibility | Cannot hide or bypass blocked gates |
+| SIOS | APIs, events, state machines, observability, enforcement, and confirmation | Cannot treat unconfirmed external effects as complete |
+| Sidekick OEL | Accountable work, delegated commands, evidence, escalation, and outcome review | Cannot exceed delegated authority or SETC approval |
+| SourceCoin | Governed economic interoperability after authorized instruction | No automatic minting, transfer, custody, valuation, redemption, or settlement |
+| SourceBlock | Bounded project, activity, or value-producing unit carrying 7D from initiation through closure | A record or anchor cannot manufacture ownership, value, authority, completion, or external finality |
+
+Every profile maps to all seven dimensions, producing 56 required component-dimension controls.
 
 ## Seven-dimensional contract
 
