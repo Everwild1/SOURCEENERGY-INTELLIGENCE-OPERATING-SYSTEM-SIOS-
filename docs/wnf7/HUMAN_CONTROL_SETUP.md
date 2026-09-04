@@ -25,6 +25,8 @@ A reviewer appointment packet must identify the reviewer and appointing subject 
 
 Parsing a valid packet does not update the database. A trusted administrative workflow must deliberately persist the governed state after checking the controlled appointment evidence.
 
+The server-side `WNF7HumanControlService` now provides that persistence boundary. It permits only the controlled lifecycle `UNASSIGNED -> NOMINATED -> ASSIGNED -> ACCEPTED`, with `HOLD` available for conflict or remediation. Direct acceptance is rejected, and replacing a named subject requires the slot to enter `HOLD` first. Each write includes the previously read assignment UUID and lifecycle status so a concurrent change fails closed. The service never exposes a release, authorization, execution, deletion, or production method.
+
 ## Evidence-validation contract
 
 Human review never updates or deletes the original candidate record. It writes a new append-only evidence record linked to the candidate by UUID and controlled reference. A validation outcome requires:
@@ -39,11 +41,15 @@ Human review never updates or deletes the original candidate record. It writes a
 
 The database trigger rejects validation from unassigned, nominated, assigned-but-unaccepted, conflicted, recused, or wrong-role reviewers.
 
+Before append, the trusted service independently checks the active scenario-role mapping, accepted reviewer identity, appointment evidence, and exact pending candidate record. The database trigger remains the final enforcement layer.
+
 ## Adjudication contract
 
 An adjudication packet records CONFIRM, OVERRIDE, or HOLD; an accountable rationale; the automated result reference; reviewed evidence references; and the decision time. A completed decision also requires a controlled attestation reference.
 
 The database permits a `COMPLETE` decision only when the reviewer is accepted for the scenario's designated role and the same reviewer has produced a validated evidence record for that scenario. This is a completion gate, not execution authority.
+
+The trusted service also resolves the governed automated-result candidate and every cited validated-evidence reference before appending a decision. Each persistence result is wrapped in a receipt with `may_execute = false`, `production_authorized = false`, and `authority_posture = DOES_NOT_CONFER_AUTHORITY`.
 
 ## Readiness separation
 

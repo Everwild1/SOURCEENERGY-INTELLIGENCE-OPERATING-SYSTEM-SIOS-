@@ -38,6 +38,8 @@ from .human_control import (
     parse_adjudication_decision,
     parse_evidence_validation,
 )
+from .human_control_repository import SupabaseWNF7HumanControlRepository
+from .human_control_service import HumanControlReceipt, WNF7HumanControlService
 from .models import (
     ALL_COMPONENTS,
     ALL_DIMENSIONS,
@@ -95,6 +97,7 @@ __all__ = [
     "EvidenceFreshness",
     "EvidenceValidationStatus",
     "EvidenceValidationSubmission",
+    "HumanControlReceipt",
     "ParsedComponentSubmission",
     "ReviewerAppointmentSubmission",
     "ReviewerConflictStatus",
@@ -108,10 +111,12 @@ __all__ = [
     "SOURCECUBE_ADAPTER",
     "SOURCEONE_ADAPTER",
     "SupabaseWNF7Repository",
+    "SupabaseWNF7HumanControlRepository",
     "WNF7AssessmentService",
     "WNF7ComponentGateway",
     "WNF7ComponentIngress",
     "WNF7ContractError",
+    "WNF7HumanControlService",
     "component_binding",
     "component_adapter",
     "component_adapter_definition",
