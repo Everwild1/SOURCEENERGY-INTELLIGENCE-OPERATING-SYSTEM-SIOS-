@@ -110,13 +110,22 @@ Automated state and decision eligibility are generated from the seven stored res
 - Client roles receive no direct access to the private wnf7 schema.
 - Production remains on HOLD until six reviewer roles are accepted, 15 evidence packets are validated, 15 decisions are complete, and accountable authority acts.
 
+## Evidence mobilization
+
+The integrity-verified v1.3 exact-charter package is represented by 15 append-only candidate evidence references, one for each pilot scenario. All references begin in `PENDING` freshness and validation states. Package hash verification proves artifact integrity, not substantive sufficiency or human acceptance.
+
+`wnf7.evidence_mobilization_readiness` separates logistical mobilization from operational readiness. With all 15 candidate references present and their package integrity matched, it reports `MOBILIZED_PENDING_HUMAN_VALIDATION`; `wnf7.operational_readiness` remains `HOLD_INCOMPLETE` until all six reviewers are accepted, 15 evidence packets are human-validated, and 15 decisions are complete. Neither view advances the release gate or authorizes production.
+
+The governed inventory and reviewer routing are documented in `pilot-evidence-mobilization-manifest.json` and `EVIDENCE_MOBILIZATION.md`. They use controlled references `SRC-011` and `SRC-013` and intentionally exclude private Drive locations.
+
 ## Controlled references
 
 - PILOT-7D-001
 - SETC-PROFILE-7D-001
 - SETC-7D-IMPLEMENTATION-001
 - SRC-013 — Human Adjudication Control Register v1.5
+- SRC-011 — Exact Charter Execution package v1.3
 
 ## Validation
 
-Apply the migration in an isolated Postgres 17 or Supabase development branch, then execute `supabase/tests/wnf7_operational_control_plane.sql`. Run `python -m unittest discover -s tests -p 'test_wnf7_*.py' -v` for the shared runtime. CI verifies eight adapters, 24 operations, all 56 dimension bindings, strict authenticated ingress, cross-component spoofing prevention, component/profile/adapter integrity, consequence anti-downgrade enforcement, deterministic aggregation, idempotency, private client access, RLS, null-command enforcement, append-only assessments/evidence/decisions, and the initial HOLD posture.
+Apply the migrations in an isolated Postgres 17 or Supabase development branch, then execute `supabase/tests/wnf7_operational_control_plane.sql` and `supabase/tests/wnf7_evidence_mobilization.sql`. Run `python -m unittest discover -s tests -p 'test_wnf7_*.py' -v` for the shared runtime and manifest checks. CI verifies eight adapters, 24 operations, all 56 dimension bindings, strict authenticated ingress, cross-component spoofing prevention, component/profile/adapter integrity, consequence anti-downgrade enforcement, deterministic aggregation, idempotency, private client access, RLS, null-command enforcement, append-only assessments/evidence/decisions, the candidate evidence inventory, and the continuing HOLD posture.
