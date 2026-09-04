@@ -25,10 +25,13 @@ from setc.wnf7 import (
     SupabaseWNF7Repository,
     WNF7AssessmentService,
     WNF7ComponentGateway,
+    WNF7ComponentIngress,
     WNF7ContractError,
+    assessment_result_envelope,
     component_binding,
     component_adapter,
     evaluate_assessment,
+    parse_component_submission,
 )
 
 
@@ -74,6 +77,29 @@ def request(
             metadata={"classification": "SYNTHETIC_NON_PRODUCTION"},
         )
     )
+
+
+def submission_payload(
+    component: ComponentCode,
+    *,
+    index: int = 1,
+    operation_code: str | None = None,
+) -> dict:
+    adapter = component_adapter(component)
+    return {
+        "assessment_id": f"WNF7-INGRESS-{index:02d}",
+        "pilot_code": "PILOT-7D-001",
+        "component_code": component.value,
+        "operation_code": operation_code or adapter.default_operation_code,
+        "subject_ref": f"synthetic://subject/{component.value.lower()}",
+        "correlation_id": f"CORR-WNF7-INGRESS-{index:02d}",
+        "idempotency_key": f"IDEM-WNF7-INGRESS-{index:02d}",
+        "observed_at": "2026-09-04T19:00:00Z",
+        "authority_ref": "synthetic://authority/current",
+        "operational_reason": "Exercise the strict component ingress contract.",
+        "observations": [item.to_input_dict() for item in observations()],
+        "metadata": {"classification": "SYNTHETIC_NON_PRODUCTION"},
+    }
 
 
 class Result:
@@ -193,6 +219,90 @@ class WNF7RuntimeTests(unittest.TestCase):
             self.assertEqual(receipt.result.adapter_code, adapter.definition.adapter_code)
             self.assertFalse(receipt.may_execute)
         self.assertEqual(len(client.records), 8)
+
+    def test_strict_ingress_binds_and_routes_all_eight_authenticated_components(self):
+        client = FakeClient()
+        ingress = WNF7ComponentIngress(
+            WNF7ComponentGateway(WNF7AssessmentService(SupabaseWNF7Repository(client)))
+        )
+        for index, component in enumerate(ALL_COMPONENTS, start=1):
+            receipt = ingress.assess(
+                component,
+                submission_payload(component, index=index),
+            )
+            self.assertEqual(receipt.result.component_code, component)
+            self.assertFalse(receipt.may_execute)
+        self.assertEqual(len(client.records), 8)
+
+    def test_ingress_rejects_cross_component_spoofing_before_persistence(self):
+        client = FakeClient()
+        ingress = WNF7ComponentIngress(
+            WNF7ComponentGateway(WNF7AssessmentService(SupabaseWNF7Repository(client)))
+        )
+        with self.assertRaisesRegex(WNF7ContractError, "does not match"):
+            ingress.assess(
+                ComponentCode.SETC,
+                submission_payload(ComponentCode.SOURCECUBE),
+            )
+        self.assertEqual(client.records, [])
+
+    def test_ingress_rejects_caller_control_of_trusted_or_executable_fields(self):
+        prohibited = {
+            "profile_code": "SETC-PROFILE-7D-001",
+            "adapter_code": "WNF7-ADAPTER-SETC-001",
+            "adapter_version": ADAPTER_VERSION,
+            "consequence_class": "INFORMATIONAL",
+            "execution_command": None,
+            "external_side_effect_requested": False,
+            "production_authorized": False,
+        }
+        for field, value in prohibited.items():
+            with self.subTest(field=field):
+                payload = submission_payload(ComponentCode.SETC)
+                payload[field] = value
+                with self.assertRaisesRegex(WNF7ContractError, "prohibited fields"):
+                    parse_component_submission(payload)
+
+    def test_ingress_rejects_unknown_observation_fields_and_naive_timestamps(self):
+        unknown = submission_payload(ComponentCode.SETC)
+        unknown["observations"][0]["untrusted_score"] = 1
+        with self.assertRaisesRegex(WNF7ContractError, "prohibited fields"):
+            parse_component_submission(unknown)
+
+        naive = submission_payload(ComponentCode.SETC)
+        naive["observed_at"] = "2026-09-04T19:00:00"
+        with self.assertRaisesRegex(WNF7ContractError, "include a timezone"):
+            parse_component_submission(naive)
+
+    def test_ingress_result_envelope_excludes_persistence_internals(self):
+        client = FakeClient()
+        ingress = WNF7ComponentIngress(
+            WNF7ComponentGateway(WNF7AssessmentService(SupabaseWNF7Repository(client)))
+        )
+        receipt = ingress.assess(
+            ComponentCode.SOURCECOIN,
+            submission_payload(
+                ComponentCode.SOURCECOIN,
+                operation_code="TRANSFER_ELIGIBILITY",
+            ),
+        )
+        payload = assessment_result_envelope(receipt)
+        self.assertEqual(payload["component_code"], "SOURCECOIN")
+        self.assertEqual(payload["consequence_class"], "CONSEQUENTIAL")
+        self.assertIsNone(payload["execution_command"])
+        self.assertNotIn("persisted_record", payload)
+        self.assertNotIn("metadata", payload)
+
+    def test_ingress_restricts_pilot_and_requires_all_seven_dimensions(self):
+        wrong_pilot = submission_payload(ComponentCode.SETC)
+        wrong_pilot["pilot_code"] = "PILOT-7D-999"
+        with self.assertRaisesRegex(WNF7ContractError, "restricted to PILOT-7D-001"):
+            parse_component_submission(wrong_pilot)
+
+        missing_dimension = submission_payload(ComponentCode.SETC)
+        missing_dimension["observations"] = missing_dimension["observations"][:-1]
+        with self.assertRaisesRegex(WNF7ContractError, "seven dimensions"):
+            parse_component_submission(missing_dimension)
 
     def test_adapter_derives_consequence_and_rejects_impact_downgrade(self):
         prepared = request(
@@ -338,6 +448,39 @@ class WNF7RuntimeTests(unittest.TestCase):
         self.assertIsNone(payload["execution_command"])
         self.assertRegex(payload["input_sha256"], r"^[0-9a-f]{64}$")
         self.assertRegex(payload["output_sha256"], r"^[0-9a-f]{64}$")
+
+    def test_component_submission_schema_covers_all_components_and_operations(self):
+        schema_path = (
+            Path(__file__).parents[1]
+            / "docs/wnf7/component-assessment-submission.schema.json"
+        )
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        properties = schema["properties"]
+        for trusted_field in (
+            "profile_code",
+            "adapter_code",
+            "adapter_version",
+            "consequence_class",
+            "execution_command",
+            "production_authorized",
+        ):
+            self.assertNotIn(trusted_field, properties)
+        self.assertEqual(
+            set(schema["$defs"]["componentCode"]["enum"]),
+            {component.value for component in ALL_COMPONENTS},
+        )
+        operation_codes = {
+            operation
+            for rule in schema["allOf"]
+            for operation in rule["then"]["properties"]["operation_code"]["enum"]
+        }
+        registered_operations = {
+            operation_code
+            for definition in ADAPTER_DEFINITIONS.values()
+            for operation_code in definition.operations
+        }
+        self.assertEqual(operation_codes, registered_operations)
+        self.assertEqual(len(operation_codes), 24)
 
     def test_supabase_repository_is_private_append_only_and_null_command(self):
         client = FakeClient()

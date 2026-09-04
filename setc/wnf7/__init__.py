@@ -22,6 +22,12 @@ from .adapters import (
 )
 from .bindings import COMPONENT_BINDINGS, ComponentBinding, DimensionBinding, component_binding
 from .evaluator import EVALUATOR_VERSION, evaluate_assessment
+from .intake import (
+    ParsedComponentSubmission,
+    WNF7ComponentIngress,
+    assessment_result_envelope,
+    parse_component_submission,
+)
 from .models import (
     ALL_COMPONENTS,
     ALL_DIMENSIONS,
@@ -66,6 +72,7 @@ __all__ = [
     "DimensionObservation",
     "DimensionResult",
     "DimensionState",
+    "ParsedComponentSubmission",
     "SETC_ADAPTER",
     "SIDEKICK_OEL_ADAPTER",
     "SIOS_ADAPTER",
@@ -76,9 +83,12 @@ __all__ = [
     "SupabaseWNF7Repository",
     "WNF7AssessmentService",
     "WNF7ComponentGateway",
+    "WNF7ComponentIngress",
     "WNF7ContractError",
     "component_binding",
     "component_adapter",
     "component_adapter_definition",
+    "assessment_result_envelope",
     "evaluate_assessment",
+    "parse_component_submission",
 ]

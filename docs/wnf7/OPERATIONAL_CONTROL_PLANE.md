@@ -32,6 +32,8 @@ WNF-7 is a shared control-plane layer, not a ninth product silo. Each component 
 9. The trusted server adapter writes the result once to `wnf7.assessment_records`. Component plus idempotency key is unique, and updates or deletes are rejected.
 10. SETC and the accountable reviewers may use the immutable record as input to the existing evidence, adjudication, and release-gate process.
 
+External component payloads enter through `WNF7ComponentIngress`. The server supplies an authenticated component identity separately from the submitted payload; a mismatch is rejected before evaluation or persistence. The strict ingress accepts only the fields defined by `component-assessment-submission.schema.json`. Callers cannot provide or override the governed profile, adapter identity, adapter version, consequence class, execution command, side-effect request, or production posture.
+
 The runtime package includes 56 distinct component/dimension bindings. Each binding identifies the operating focus, canonical control reference, and accountable reviewer role for that component under that dimension.
 
 ## Component adapter contract
@@ -50,6 +52,8 @@ The code and database share eight versioned adapter identities and 24 allowliste
 | SourceBlock | `LIFECYCLE_GATE`, `VALUE_EVIDENCE_REVIEW`, `CLOSURE_REVIEW` | Lifecycle review only; no manufactured value, ownership, or finality |
 
 `WNF7ComponentGateway` is the single application entry point. `component_adapter(...)` also exposes the individual component port when a domain service needs an explicit dependency. Both paths return an assessment receipt whose `may_execute` property is always false.
+
+`WNF7ComponentIngress` is the portable application boundary for authenticated component traffic. It validates exact fields, timezone-aware timestamps, canonical dimension and status values, one observation for every dimension, safe metadata, and authenticated-component equality before routing to the gateway. Authentication itself remains the responsibility of the trusted server transport; no direct browser or anonymous Supabase access is enabled by this interface.
 
 ## Component responsibilities
 
@@ -80,6 +84,8 @@ Each row requires:
 - deterministic SHA-256 input and output hashes;
 - `human_review_required = true`; and
 - `execution_command = null`.
+
+The caller-facing submission schema intentionally excludes `profile_code`, `adapter_code`, `adapter_version`, `consequence_class`, `execution_command`, external-side-effect flags, and production authorization. These fields are derived or prohibited at the trusted application boundary.
 
 Automated state and decision eligibility are generated from the seven stored results by immutable database functions. This creates an independent database check on the Python evaluator's result.
 
@@ -113,4 +119,4 @@ Automated state and decision eligibility are generated from the seven stored res
 
 ## Validation
 
-Apply the migration in an isolated Postgres 17 or Supabase development branch, then execute `supabase/tests/wnf7_operational_control_plane.sql`. Run `python -m unittest discover -s tests -p 'test_wnf7_*.py' -v` for the shared runtime. CI verifies eight adapters, 24 operations, all 56 dimension bindings, component/profile/adapter integrity, consequence anti-downgrade enforcement, deterministic aggregation, idempotency, private client access, RLS, null-command enforcement, append-only assessments/evidence/decisions, and the initial HOLD posture.
+Apply the migration in an isolated Postgres 17 or Supabase development branch, then execute `supabase/tests/wnf7_operational_control_plane.sql`. Run `python -m unittest discover -s tests -p 'test_wnf7_*.py' -v` for the shared runtime. CI verifies eight adapters, 24 operations, all 56 dimension bindings, strict authenticated ingress, cross-component spoofing prevention, component/profile/adapter integrity, consequence anti-downgrade enforcement, deterministic aggregation, idempotency, private client access, RLS, null-command enforcement, append-only assessments/evidence/decisions, and the initial HOLD posture.

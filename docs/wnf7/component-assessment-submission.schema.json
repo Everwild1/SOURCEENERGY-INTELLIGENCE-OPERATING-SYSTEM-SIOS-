@@ -1,0 +1,307 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sourceenergyglobal.com/schemas/wnf7/component-assessment-submission.schema.json",
+  "title": "WNF-7 Component Assessment Submission",
+  "description": "Strict assessment-only ingress shared by the eight governed SourceEnergy components. Trusted adapter, profile, consequence, and execution fields are intentionally not caller-controlled.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "assessment_id",
+    "component_code",
+    "operation_code",
+    "subject_ref",
+    "correlation_id",
+    "idempotency_key",
+    "observed_at",
+    "operational_reason",
+    "observations"
+  ],
+  "properties": {
+    "assessment_id": {
+      "type": "string",
+      "pattern": "^WNF7-",
+      "minLength": 6
+    },
+    "pilot_code": {
+      "const": "PILOT-7D-001"
+    },
+    "component_code": {
+      "$ref": "#/$defs/componentCode"
+    },
+    "operation_code": {
+      "type": "string"
+    },
+    "subject_ref": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "correlation_id": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "idempotency_key": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "authority_ref": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "operational_reason": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "interpretive_meaning": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "observations": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "$ref": "#/$defs/dimensionObservation"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "properties": {"dimension": {"const": "FEAR"}},
+            "required": ["dimension"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {"dimension": {"const": "PRESENCE"}},
+            "required": ["dimension"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {"dimension": {"const": "WISDOM"}},
+            "required": ["dimension"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {"dimension": {"const": "KNOWLEDGE"}},
+            "required": ["dimension"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {"dimension": {"const": "UNDERSTANDING"}},
+            "required": ["dimension"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {"dimension": {"const": "COUNSEL"}},
+            "required": ["dimension"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {"dimension": {"const": "MIGHT_POWER"}},
+            "required": ["dimension"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"component_code": {"const": "SETC"}},
+        "required": ["component_code"]
+      },
+      "then": {
+        "properties": {
+          "operation_code": {
+            "enum": ["AUTHORITY_REVIEW", "POLICY_DECISION", "RELEASE_GATE_REVIEW"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"component_code": {"const": "SOURCECUBE"}},
+        "required": ["component_code"]
+      },
+      "then": {
+        "properties": {
+          "operation_code": {
+            "enum": ["CONTEXT_CLASSIFICATION", "EVIDENCE_SYNTHESIS", "ADVISORY_PLAN"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"component_code": {"const": "CODEX_VERITAS"}},
+        "required": ["component_code"]
+      },
+      "then": {
+        "properties": {
+          "operation_code": {
+            "enum": ["CLAIM_ASSESSMENT", "CONTRADICTION_REVIEW", "PUBLICATION_REVIEW"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"component_code": {"const": "SOURCEONE"}},
+        "required": ["component_code"]
+      },
+      "then": {
+        "properties": {
+          "operation_code": {
+            "enum": ["HUMAN_ACTION_REVIEW", "APPROVAL_CONTEXT", "OUTCOME_EXPLANATION"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"component_code": {"const": "SIOS"}},
+        "required": ["component_code"]
+      },
+      "then": {
+        "properties": {
+          "operation_code": {
+            "enum": ["WORKFLOW_TRANSITION_REVIEW", "CROSS_DOMAIN_HANDOFF", "RELEASE_READINESS"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"component_code": {"const": "SIDEKICK_OEL"}},
+        "required": ["component_code"]
+      },
+      "then": {
+        "properties": {
+          "operation_code": {
+            "enum": ["WORK_ITEM_INTAKE", "DELEGATION_REVIEW", "OUTCOME_REVIEW"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"component_code": {"const": "SOURCECOIN"}},
+        "required": ["component_code"]
+      },
+      "then": {
+        "properties": {
+          "operation_code": {
+            "enum": ["ECONOMIC_ELIGIBILITY", "TRANSFER_ELIGIBILITY", "SETTLEMENT_ELIGIBILITY"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"component_code": {"const": "SOURCEBLOCK"}},
+        "required": ["component_code"]
+      },
+      "then": {
+        "properties": {
+          "operation_code": {
+            "enum": ["LIFECYCLE_GATE", "VALUE_EVIDENCE_REVIEW", "CLOSURE_REVIEW"]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "componentCode": {
+      "enum": [
+        "SETC",
+        "SOURCECUBE",
+        "CODEX_VERITAS",
+        "SOURCEONE",
+        "SIOS",
+        "SIDEKICK_OEL",
+        "SOURCECOIN",
+        "SOURCEBLOCK"
+      ]
+    },
+    "dimensionCode": {
+      "enum": [
+        "FEAR",
+        "PRESENCE",
+        "WISDOM",
+        "KNOWLEDGE",
+        "UNDERSTANDING",
+        "COUNSEL",
+        "MIGHT_POWER"
+      ]
+    },
+    "dimensionObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dimension", "status", "finding", "evidence_refs", "reviewed_at"],
+      "properties": {
+        "dimension": {
+          "$ref": "#/$defs/dimensionCode"
+        },
+        "status": {
+          "enum": ["PASS", "REVIEW", "BLOCKED", "NOT_APPLICABLE"]
+        },
+        "finding": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "not_applicable_reason": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "approving_authority_ref": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"status": {"const": "NOT_APPLICABLE"}},
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["not_applicable_reason", "approving_authority_ref"]
+          }
+        }
+      ]
+    }
+  }
+}
