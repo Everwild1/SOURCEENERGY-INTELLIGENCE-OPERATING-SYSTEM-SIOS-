@@ -9,7 +9,7 @@ create table wnf7.dimension_registry (
 );
 create table wnf7.component_profiles (
   profile_code text primary key,
-  component_code text not null check (component_code in ('SETC','SOURCECUBE','SOURCECOIN')),
+  component_code text not null check (component_code in ('SETC','SOURCECUBE','CODEX_VERITAS','SOURCEONE','SIOS','SIDEKICK_OEL','SOURCECOIN','SOURCEBLOCK')),
   version_label text not null,
   lifecycle_state text not null check (lifecycle_state in ('DRAFT','PILOT','REVIEW','AUTHORIZED','RETIRED')),
   operational_scope text not null,
@@ -150,7 +150,12 @@ insert into wnf7.dimension_registry values
 insert into wnf7.component_profiles(profile_code,component_code,version_label,lifecycle_state,operational_scope,execution_boundary,canonical_source_ref,metadata) values
 ('SETC-PROFILE-7D-001','SETC','1.0','PILOT','Authority, evidence, context, counsel, and bounded execution controls','No consequential action without verified authority and accountable human authorization','SETC-PROFILE-7D-001','{}'),
 ('SOURCECUBE-PROFILE-7D-001','SOURCECUBE','1.0','PILOT','Context classification, evidence lineage, and advisory recommendations','Advisory-only; outputs cannot authorize transactions or mutate authoritative systems','PILOT-7D-001','{}'),
-('SOURCECOIN-PROFILE-7D-001','SOURCECOIN','1.0','PILOT','Eligibility and governance signals for SourceCoin-related records','No minting, transfer, custody, valuation, redemption, or settlement authority','PILOT-7D-001','{"reference_only":true}');
+('SOURCECOIN-PROFILE-7D-001','SOURCECOIN','1.0','PILOT','Eligibility and governance signals for SourceCoin-related records','No minting, transfer, custody, valuation, redemption, or settlement authority','PILOT-7D-001','{"reference_only":true}'),
+('CODEX-VERITAS-PROFILE-7D-001','CODEX_VERITAS','1.0','PILOT','Provenance, claim state, confidence, contradiction history, supersession, and truth/meaning separation','Evidence and interpretation cannot manufacture truth, authority, certainty, endorsement, or external finality','SETC-PROFILE-7D-001','{"truth_meaning_separation":true}'),
+('SOURCEONE-PROFILE-7D-001','SOURCEONE','1.0','PILOT','Human-facing seven-dimensional context, explanation, warnings, approvals, and outcome visibility','Interface actions cannot bypass blocked gates, obscure uncertainty, or convert advice into authorization','SETC-PROFILE-7D-001','{"human_interface":true}'),
+('SIOS-PROFILE-7D-001','SIOS','1.0','PILOT','Governed APIs, events, state machines, observability, control enforcement, and cross-domain confirmation','Orchestration cannot aggregate missing authority or represent unconfirmed external effects as complete','SETC-PROFILE-7D-001','{"ecosystem_runtime":true}'),
+('SIDEKICK-OEL-PROFILE-7D-001','SIDEKICK_OEL','1.0','PILOT','Convert approved organizational intent into accountable work, controls, evidence, escalation, and outcome review','Commands remain bounded by delegated authority, OEL control level, confirmation, and SETC approval','SETC-PROFILE-7D-001','{"organizational_execution":true}'),
+('SOURCEBLOCK-PROFILE-7D-001','SOURCEBLOCK','1.0','PILOT','Bounded project, activity, or value-producing unit carrying a seven-dimensional profile from initiation through closure','A SourceBlock record or anchor cannot manufacture ownership, authority, valuation, completion, or external finality','SETC-PROFILE-7D-001','{"bounded_value_unit":true}');
 
 insert into wnf7.component_dimension_controls
 select p.profile_code,d.dimension_code,
