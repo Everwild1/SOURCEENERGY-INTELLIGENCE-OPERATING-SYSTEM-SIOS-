@@ -18,6 +18,7 @@ create table wnf7.component_profiles (
   canonical_source_ref text not null,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
+  unique(profile_code,component_code),
   check (not production_authorized or lifecycle_state='AUTHORIZED')
 );
 create table wnf7.component_dimension_controls (
@@ -106,8 +107,134 @@ begin
   raise exception '% is append-only; create a superseding governed record',tg_table_name;
 end;
 $$;
+
+create function wnf7.valid_dimension_results(p_results jsonb) returns boolean
+language sql immutable strict set search_path='' as $$
+  select
+    jsonb_typeof(p_results)='array'
+    and jsonb_array_length(p_results)=7
+    and coalesce((
+      select count(*)=7
+        and count(distinct item->>'dimension')=7
+        and bool_and(jsonb_typeof(item)='object')
+        and bool_and(coalesce(item->>'dimension'=any(array['FEAR','PRESENCE','WISDOM','KNOWLEDGE','UNDERSTANDING','COUNSEL','MIGHT_POWER']),false))
+        and bool_and(coalesce(item->>'status'=any(array['PASS','REVIEW','BLOCKED','NOT_APPLICABLE']),false))
+        and bool_and(coalesce(length(btrim(item->>'finding'))>0,false))
+        and bool_and(coalesce(length(btrim(item->>'owner_role'))>0,false))
+        and bool_and(coalesce(jsonb_typeof(item->'evidence_refs')='array' and jsonb_array_length(item->'evidence_refs')>0,false))
+        and bool_and(coalesce(jsonb_typeof(item->'control_refs')='array' and jsonb_array_length(item->'control_refs')>0,false))
+        and bool_and(coalesce(
+          item->>'status'<>'NOT_APPLICABLE'
+          or (
+            length(btrim(item->>'not_applicable_reason'))>0
+            and length(btrim(item->>'approving_authority_ref'))>0
+          )
+        ,false))
+      from jsonb_array_elements(p_results) item
+    ),false);
+$$;
+
+create function wnf7.derive_automated_state(p_results jsonb) returns text
+language sql immutable strict set search_path='' as $$
+  select case
+    when not wnf7.valid_dimension_results(p_results) then 'BLOCKED'
+    when exists(
+      select 1 from jsonb_array_elements(p_results) item
+      where item->>'status'='BLOCKED'
+         or (item->>'dimension'='FEAR' and item->>'status'<>'PASS')
+    ) then 'BLOCKED'
+    when exists(
+      select 1 from jsonb_array_elements(p_results) item
+      where item->>'status' in ('REVIEW','NOT_APPLICABLE')
+    ) then 'REVIEW'
+    else 'PASS'
+  end;
+$$;
+
+create function wnf7.derive_decision_eligibility(p_results jsonb) returns text
+language sql immutable strict set search_path='' as $$
+  select case wnf7.derive_automated_state(p_results)
+    when 'PASS' then 'ELIGIBLE_FOR_HUMAN_DECISION'
+    when 'REVIEW' then 'SIMULATION_ONLY'
+    else 'NOT_ELIGIBLE'
+  end;
+$$;
+
+create table wnf7.assessment_records (
+  assessment_id text primary key check(assessment_id ~ '^WNF7-[A-Z0-9][A-Z0-9_-]+$'),
+  pilot_code text not null default 'PILOT-7D-001',
+  component_code text not null,
+  profile_code text not null,
+  subject_ref text not null,
+  correlation_id text not null,
+  idempotency_key text not null,
+  consequence_class text not null check(consequence_class in ('INFORMATIONAL','ADVISORY','OPERATIONAL','CONSEQUENTIAL')),
+  observed_at timestamptz not null,
+  authority_ref text,
+  operational_reason text not null,
+  interpretive_meaning text,
+  dimension_results jsonb not null check(wnf7.valid_dimension_results(dimension_results)),
+  automated_state text generated always as (wnf7.derive_automated_state(dimension_results)) stored,
+  decision_eligibility text generated always as (wnf7.derive_decision_eligibility(dimension_results)) stored,
+  human_review_required boolean not null default true check(human_review_required),
+  execution_command jsonb check(execution_command is null),
+  input_sha256 text not null check(input_sha256 ~ '^[0-9a-f]{64}$'),
+  output_sha256 text not null check(output_sha256 ~ '^[0-9a-f]{64}$'),
+  evaluator_version text not null,
+  supersedes_assessment_id text references wnf7.assessment_records(assessment_id),
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  unique(component_code,idempotency_key),
+  foreign key(profile_code,component_code) references wnf7.component_profiles(profile_code,component_code),
+  constraint assessment_records_required_text_check check(
+    length(btrim(pilot_code))>0
+    and length(btrim(subject_ref))>0
+    and length(btrim(correlation_id))>0
+    and length(btrim(idempotency_key))>0
+    and length(btrim(operational_reason))>0
+    and length(btrim(evaluator_version))>0
+  ),
+  constraint assessment_records_optional_text_check check(
+    (authority_ref is null or length(btrim(authority_ref))>0)
+    and (interpretive_meaning is null or length(btrim(interpretive_meaning))>0)
+  ),
+  constraint assessment_records_metadata_object_check check(jsonb_typeof(metadata)='object'),
+  check(
+    authority_ref is not null
+    or not jsonb_path_exists(dimension_results,'$[*] ? (@.dimension == "FEAR" && @.status == "PASS")')
+  )
+);
+
+create index assessment_records_component_observed_idx
+  on wnf7.assessment_records(component_code,observed_at desc);
+create index assessment_records_correlation_idx
+  on wnf7.assessment_records(correlation_id);
+create index assessment_records_posture_idx
+  on wnf7.assessment_records(automated_state,observed_at desc);
+create index component_dimension_controls_dimension_idx
+  on wnf7.component_dimension_controls(dimension_code);
+create index pilot_scenarios_reviewer_role_idx
+  on wnf7.pilot_scenarios(reviewer_role_code);
+create index reviewer_assignments_reviewer_role_idx
+  on wnf7.reviewer_assignments(reviewer_role_code);
+create index evidence_items_scenario_idx
+  on wnf7.evidence_items(scenario_code);
+create index adjudication_decisions_scenario_idx
+  on wnf7.adjudication_decisions(scenario_code);
+create index adjudication_decisions_reviewer_role_idx
+  on wnf7.adjudication_decisions(reviewer_role_code);
+create index adjudication_decisions_supersedes_idx
+  on wnf7.adjudication_decisions(supersedes_decision_id)
+  where supersedes_decision_id is not null;
+create index assessment_records_profile_component_idx
+  on wnf7.assessment_records(profile_code,component_code);
+create index assessment_records_supersedes_idx
+  on wnf7.assessment_records(supersedes_assessment_id)
+  where supersedes_assessment_id is not null;
+
 create trigger evidence_append_only before update or delete on wnf7.evidence_items for each row execute function wnf7.prevent_record_mutation();
 create trigger decisions_append_only before update or delete on wnf7.adjudication_decisions for each row execute function wnf7.prevent_record_mutation();
+create trigger assessments_append_only before update or delete on wnf7.assessment_records for each row execute function wnf7.prevent_record_mutation();
 
 alter table wnf7.dimension_registry enable row level security;
 alter table wnf7.component_profiles enable row level security;
@@ -118,15 +245,22 @@ alter table wnf7.reviewer_assignments enable row level security;
 alter table wnf7.evidence_items enable row level security;
 alter table wnf7.adjudication_decisions enable row level security;
 alter table wnf7.release_gates enable row level security;
+alter table wnf7.assessment_records enable row level security;
 
 revoke all on schema wnf7 from public,anon,authenticated;
 revoke all on all tables in schema wnf7 from public,anon,authenticated;
 revoke all on all sequences in schema wnf7 from public,anon,authenticated;
 revoke execute on function wnf7.prevent_record_mutation() from public,anon,authenticated;
+revoke execute on function wnf7.valid_dimension_results(jsonb) from public,anon,authenticated;
+revoke execute on function wnf7.derive_automated_state(jsonb) from public,anon,authenticated;
+revoke execute on function wnf7.derive_decision_eligibility(jsonb) from public,anon,authenticated;
 grant usage on schema wnf7 to service_role;
 grant select,insert,update,delete on all tables in schema wnf7 to service_role;
 grant usage,select on all sequences in schema wnf7 to service_role;
 grant execute on function wnf7.prevent_record_mutation() to service_role;
+grant execute on function wnf7.valid_dimension_results(jsonb) to service_role;
+grant execute on function wnf7.derive_automated_state(jsonb) to service_role;
+grant execute on function wnf7.derive_decision_eligibility(jsonb) to service_role;
 
 create policy dimensions_service on wnf7.dimension_registry for all to service_role using(true) with check(true);
 create policy profiles_service on wnf7.component_profiles for all to service_role using(true) with check(true);
@@ -137,6 +271,7 @@ create policy assignments_service on wnf7.reviewer_assignments for all to servic
 create policy evidence_service on wnf7.evidence_items for all to service_role using(true) with check(true);
 create policy decisions_service on wnf7.adjudication_decisions for all to service_role using(true) with check(true);
 create policy gates_service on wnf7.release_gates for all to service_role using(true) with check(true);
+create policy assessments_service on wnf7.assessment_records for all to service_role using(true) with check(true);
 
 insert into wnf7.dimension_registry values
 ('FEAR',1,'Fear of the Lord','Authority, legitimacy, limits, and fail-closed behavior'),
@@ -159,14 +294,14 @@ insert into wnf7.component_profiles(profile_code,component_code,version_label,li
 
 insert into wnf7.component_dimension_controls
 select p.profile_code,d.dimension_code,
-case d.dimension_code
-when 'FEAR' then 'Resolve authority and deny by default when missing, expired, or out of scope.'
-when 'PRESENCE' then 'Bind canonical identity, time, place, provenance, and version without collision.'
-when 'WISDOM' then 'Demonstrate purpose alignment, stewardship, and durable value.'
-when 'KNOWLEDGE' then 'Require attributable, current, classified, contradiction-aware evidence.'
-when 'UNDERSTANDING' then 'Evaluate jurisdiction, affected parties, uncertainty, and consequences.'
-when 'COUNSEL' then 'Route approvals, dissent, exceptions, escalation, and accountable review.'
-when 'MIGHT_POWER' then 'Constrain capability by authorization, confirmation, idempotency, reversibility, and audit evidence.'
+p.operational_scope || ' | ' || case d.dimension_code
+when 'FEAR' then 'Resolve governing authority, rule scope, and fail closed when authority is absent, expired, or insufficient.'
+when 'PRESENCE' then 'Bind canonical identity, time, place, provenance, correlation, and version without collision.'
+when 'WISDOM' then 'Demonstrate purpose alignment, architectural fit, stewardship, alternatives, and durable value.'
+when 'KNOWLEDGE' then 'Require attributable, current, classified, reproducible, and contradiction-aware evidence.'
+when 'UNDERSTANDING' then 'Evaluate jurisdiction, affected parties, dependencies, uncertainty, asymmetry, and consequences.'
+when 'COUNSEL' then 'Route approvals, dissent, exceptions, escalation, and accountable human review without self-approval.'
+when 'MIGHT_POWER' then 'Constrain capability by authorization, allowlists, confirmation, idempotency, reversibility, receipts, and audit evidence.'
 end,true from wnf7.component_profiles p cross join wnf7.dimension_registry d;
 
 insert into wnf7.reviewer_roles values
@@ -217,4 +352,5 @@ grant select on wnf7.operational_readiness to service_role;
 comment on table wnf7.evidence_items is 'Append-only evidence references. Never store credentials, private keys, full payment messages, or unnecessary personal data.';
 comment on table wnf7.adjudication_decisions is 'Append-only human decisions; no independent legal, financial, regulatory, custody, minting, transfer, or settlement authority.';
 comment on table wnf7.release_gates is 'Human-controlled release posture. Derived readiness never auto-authorizes production.';
+comment on table wnf7.assessment_records is 'Append-only WNF-7 runtime assessments for all governed ecosystem components. Records advisory eligibility and never carries an execution command.';
 comment on view wnf7.operational_readiness is 'READY_FOR_AUTHORITY_REVIEW is not authorization.';

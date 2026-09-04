@@ -10,8 +10,16 @@
     "profile_code",
     "observed_at",
     "dimensions",
+    "dimension_results",
     "automated_state",
     "decision_eligibility",
+    "blocking_dimensions",
+    "review_dimensions",
+    "recommended_reviewer_roles",
+    "human_review_required",
+    "input_sha256",
+    "output_sha256",
+    "evaluator_version",
     "execution_command"
   ],
   "properties": {
@@ -41,7 +49,7 @@
     },
     "dimensions": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 7,
       "maxItems": 7,
       "uniqueItems": true,
       "items": {
@@ -56,6 +64,114 @@
         ]
       }
     },
+    "dimension_results": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "$ref": "#/$defs/dimensionResult"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "dimension": {
+                "const": "FEAR"
+              }
+            },
+            "required": [
+              "dimension"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "dimension": {
+                "const": "PRESENCE"
+              }
+            },
+            "required": [
+              "dimension"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "dimension": {
+                "const": "WISDOM"
+              }
+            },
+            "required": [
+              "dimension"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "dimension": {
+                "const": "KNOWLEDGE"
+              }
+            },
+            "required": [
+              "dimension"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "dimension": {
+                "const": "UNDERSTANDING"
+              }
+            },
+            "required": [
+              "dimension"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "dimension": {
+                "const": "COUNSEL"
+              }
+            },
+            "required": [
+              "dimension"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "dimension": {
+                "const": "MIGHT_POWER"
+              }
+            },
+            "required": [
+              "dimension"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
     "automated_state": {
       "enum": [
         "PASS",
@@ -69,6 +185,29 @@
         "SIMULATION_ONLY",
         "NOT_ELIGIBLE"
       ]
+    },
+    "blocking_dimensions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/dimensionCode"
+      }
+    },
+    "review_dimensions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/dimensionCode"
+      }
+    },
+    "recommended_reviewer_roles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "evidence_refs": {
       "type": "array",
@@ -86,9 +225,121 @@
     "execution_command": {
       "type": "null"
     },
+    "human_review_required": {
+      "const": true
+    },
+    "input_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "output_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "evaluator_version": {
+      "type": "string",
+      "minLength": 1
+    },
     "metadata": {
       "type": "object",
       "default": {}
+    }
+  },
+  "$defs": {
+    "dimensionCode": {
+      "enum": [
+        "FEAR",
+        "PRESENCE",
+        "WISDOM",
+        "KNOWLEDGE",
+        "UNDERSTANDING",
+        "COUNSEL",
+        "MIGHT_POWER"
+      ]
+    },
+    "dimensionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "status",
+        "finding",
+        "evidence_refs",
+        "control_refs",
+        "owner_role",
+        "reviewed_at"
+      ],
+      "properties": {
+        "dimension": {
+          "$ref": "#/$defs/dimensionCode"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "REVIEW",
+            "BLOCKED",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "finding": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "control_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "owner_role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "not_applicable_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approving_authority_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "NOT_APPLICABLE"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "not_applicable_reason",
+              "approving_authority_ref"
+            ]
+          }
+        }
+      ]
     }
   }
 }

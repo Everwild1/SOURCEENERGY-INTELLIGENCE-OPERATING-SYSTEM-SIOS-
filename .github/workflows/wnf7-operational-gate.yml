@@ -6,8 +6,13 @@ on:
       - 'supabase/migrations/**wnf7*.sql'
       - 'supabase/tests/wnf7*.sql'
       - 'docs/wnf7/**'
+      - 'setc/wnf7/**'
+      - 'tests/test_wnf7_*.py'
       - '.github/workflows/wnf7-operational-gate.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   contract:
@@ -30,6 +35,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Create Supabase role contract
         run: |
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
@@ -43,3 +52,9 @@ jobs:
 
       - name: Run WNF-7 fail-closed tests
         run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/wnf7_operational_control_plane.sql
+
+      - name: Compile WNF-7 runtime
+        run: python -m compileall -q setc/wnf7
+
+      - name: Run WNF-7 runtime tests
+        run: python -m unittest discover -s tests -p 'test_wnf7_*.py' -v

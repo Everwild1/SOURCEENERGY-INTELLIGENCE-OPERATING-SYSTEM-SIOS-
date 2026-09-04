@@ -1,10 +1,12 @@
 # WNF-7 operational control plane
 
-Status: implemented on a feature branch for controlled validation. Production authorization remains false.
+Status: runtime and persistence implementation on a feature branch for controlled validation. Production authorization remains false.
 
 ## Purpose
 
 WNF-7 makes the seven dimensions an executable governance and meaning framework across SETC, SourceCube, Codex Veritas, SourceOne, SIOS, Sidekick OEL, SourceCoin, SourceBlock, and future approved SourceEnergy components. It records classifications, evidence, accountable adjudications, and release posture without asserting spiritual, legal, financial, regulatory, custody, or settlement authority.
+
+WNF-7 is a shared control-plane layer, not a ninth product silo. Each component keeps its authoritative domain and connects through a versioned profile and seven component-specific control bindings.
 
 ## System boundaries
 
@@ -16,6 +18,18 @@ WNF-7 makes the seven dimensions an executable governance and meaning framework 
 | SETC | Authority resolution, governance evaluation, review routing, and fail-closed control |
 | SourceCube | Context classification, evidence lineage, reproducible advisory analysis, and null-command enforcement |
 | SourceCoin | Eligibility and governance signals only; no minting, transfer, custody, valuation, redemption, or settlement authority |
+
+## Runtime flow
+
+1. A trusted component adapter supplies one evidence-backed observation for each of the seven dimensions.
+2. `setc.wnf7` verifies the component/profile binding and orders all seven observations canonically.
+3. The evaluator applies fail-closed aggregation. Any BLOCKED dimension blocks the assessment; any Fear result other than PASS also blocks it.
+4. A REVIEW or approved NOT_APPLICABLE result limits the assessment to simulation and human review.
+5. An all-PASS result is only `ELIGIBLE_FOR_HUMAN_DECISION`; it is not approval and never contains an execution command.
+6. The trusted server adapter writes the result once to `wnf7.assessment_records`. Component plus idempotency key is unique, and updates or deletes are rejected.
+7. SETC and the accountable reviewers may use the immutable record as input to the existing evidence, adjudication, and release-gate process.
+
+The runtime package includes 56 distinct component/dimension bindings. Each binding identifies the operating focus, canonical control reference, and accountable reviewer role for that component under that dimension.
 
 ## Component responsibilities
 
@@ -31,6 +45,22 @@ WNF-7 makes the seven dimensions an executable governance and meaning framework 
 | SourceBlock | Bounded project, activity, or value-producing unit carrying 7D from initiation through closure | A record or anchor cannot manufacture ownership, value, authority, completion, or external finality |
 
 Every profile maps to all seven dimensions, producing 56 required component-dimension controls.
+
+## Assessment persistence contract
+
+`wnf7.assessment_records` is private, RLS-enabled, and available only to trusted server-side `service_role` access. It stores references and bounded findings rather than credentials, private keys, full payment messages, or unnecessary personal data.
+
+Each row requires:
+
+- a canonical component/profile pair;
+- all seven dimension results exactly once;
+- at least one evidence reference and one control reference per dimension;
+- a timezone-aware observation time, correlation ID, and component-scoped idempotency key;
+- deterministic SHA-256 input and output hashes;
+- `human_review_required = true`; and
+- `execution_command = null`.
+
+Automated state and decision eligibility are generated from the seven stored results by immutable database functions. This creates an independent database check on the Python evaluator's result.
 
 ## Seven-dimensional contract
 
@@ -62,4 +92,4 @@ Every profile maps to all seven dimensions, producing 56 required component-dime
 
 ## Validation
 
-Apply the migration in an isolated Postgres 17 or Supabase development branch, then execute supabase/tests/wnf7_operational_control_plane.sql. CI verifies registry counts, ecosystem boundaries, RLS, private client access, append-only evidence and decisions, and the initial HOLD posture.
+Apply the migration in an isolated Postgres 17 or Supabase development branch, then execute `supabase/tests/wnf7_operational_control_plane.sql`. Run `python -m unittest discover -s tests -p 'test_wnf7_*.py' -v` for the shared runtime. CI verifies registry counts, all 56 bindings, component/profile integrity, deterministic aggregation, idempotency, private client access, RLS, null-command enforcement, append-only assessments/evidence/decisions, and the initial HOLD posture.
