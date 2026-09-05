@@ -1,0 +1,52 @@
+name: OEL Sidekick Contract CI
+
+on:
+  pull_request:
+    paths:
+      - 'docs/oel/**'
+      - 'supabase/functions/oel-sidekick-command-gateway/**'
+      - 'tests/oel/**'
+      - '.github/workflows/oel-sidekick-contract-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/oel/**'
+      - 'supabase/functions/oel-sidekick-command-gateway/**'
+      - 'tests/oel/**'
+      - '.github/workflows/oel-sidekick-contract-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run deterministic OEL signing contract tests
+        run: node tests/oel/sidekick-contract-ci.mjs
+      - name: Guard production secret material
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -n -E 'OEL_SIDEKICK_SHARED_SECRET[[:space:]]*=[[:space:]]*[A-Za-z0-9]|SUPABASE_SERVICE_ROLE_KEY[[:space:]]*=[[:space:]]*[A-Za-z0-9]|sb_secret_[A-Za-z0-9_-]{12,}' supabase/functions/oel-sidekick-command-gateway --exclude='*.md'; then
+            echo 'Forbidden secret material detected in OEL runtime files.' >&2
+            exit 1
+          fi
+      - name: Guard Sidekick C2 autonomous ceiling
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'requested_control_level=C3' tests/oel/sidekick-gateway-test-vectors.json
+          grep -q 'HUMAN_AUTHORIZATION_REQUIRED_NO_AUTONOMOUS_MATERIAL_EXECUTION' tests/oel/sidekick-gateway-test-vectors.json
+          grep -q 'Maximum adapter control level: \*\*C2\*\*' docs/oel/OEL-COMMISSION-001.md
+      - name: Guard canonical contract documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'x-oel-signature' docs/oel/OEL-COMMISSION-001.md
+          grep -q 'HMAC-SHA256' docs/oel/OEL-COMMISSION-001.md
+          grep -q 'OEL_SIDEKICK_SHARED_SECRET' docs/oel/OEL-COMMISSION-001.md

@@ -1,0 +1,42 @@
+{
+  "specification": "OEL-COMMISSION-001",
+  "gateway": "oel-sidekick-command-gateway",
+  "warning": "NON-SECRET FIXTURES ONLY. Never place OEL_SIDEKICK_SHARED_SECRET in this file.",
+  "canonical_order": [
+    "client_code",
+    "command_id",
+    "idempotency_key",
+    "nonce",
+    "request_timestamp",
+    "correlation_id",
+    "trace_id",
+    "setc_org_oid",
+    "action",
+    "resource_type",
+    "resource_id",
+    "requested_control_level",
+    "actor_external_ref",
+    "channel_identity",
+    "payload_hash"
+  ],
+  "negative_tests": [
+    {"id":"C001","mutation":"secret unavailable","expected_http":503,"expected_code":"CONFIGURATION_ERROR"},
+    {"id":"C002","mutation":"omit x-oel-signature","expected_http":401,"expected_code":"SIGNATURE_REQUIRED"},
+    {"id":"C003","mutation":"use invalid HMAC","expected_http":401,"expected_code":"INVALID_SIGNATURE"},
+    {"id":"C004","mutation":"change payload after hash/signature","expected_http":401,"expected_code":"PAYLOAD_HASH_MISMATCH_OR_INVALID_SIGNATURE"},
+    {"id":"C005","mutation":"client_code=unknown","expected_http":403,"expected_code":"CLIENT_NOT_ALLOWED"},
+    {"id":"C006","mutation":"request timestamp outside adapter clock skew window","expected_code":"REQUEST_TIMESTAMP_OUTSIDE_ALLOWED_WINDOW"},
+    {"id":"C007","mutation":"reuse accepted nonce","expected_code":"REPLAY_REJECTED"},
+    {"id":"C008","mutation":"reuse accepted idempotency_key","expected_code":"DUPLICATE_NO_SECOND_EXECUTION"},
+    {"id":"C009","mutation":"use non-allowlisted setc_org_oid","expected_code":"ORG_NOT_ALLOWED"},
+    {"id":"C010","mutation":"use non-allowlisted action","expected_code":"ACTION_NOT_ALLOWED"},
+    {"id":"C011","mutation":"requested_control_level=C3","expected_code":"CONTROL_LEVEL_EXCEEDED"},
+    {"id":"C012","mutation":"unknown actor_external_ref","expected_http":403,"expected_code":"ACTOR_NOT_RESOLVED"},
+    {"id":"C013","mutation":"unverified channel_identity","expected_http":403,"expected_code":"CHANNEL_NOT_VERIFIED"}
+  ],
+  "positive_tests": [
+    {"id":"C014","action":"work.acknowledge","maximum_level":"C1","expected":"EXECUTED_ONCE_WITH_RECEIPT"},
+    {"id":"C015","action":"evidence.submit","maximum_level":"C2","expected":"EVIDENCE_RECORDED_WITH_PROVENANCE_AND_RECEIPT"},
+    {"id":"C016","action":"work.escalate","target_control_level":"C3","expected":"HUMAN_AUTHORIZATION_REQUIRED_NO_AUTONOMOUS_MATERIAL_EXECUTION"}
+  ]
+}
