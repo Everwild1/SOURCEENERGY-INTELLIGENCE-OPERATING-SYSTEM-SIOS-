@@ -1,9 +1,10 @@
-name: AWS-03 CloudFormation Validation
+name: AWS-03/AWS-04 CloudFormation Validation
 
 on:
   pull_request:
     paths:
       - 'infra/aws/cloudformation/aws03-security-audit-baseline.yaml'
+      - 'infra/aws/cloudformation/aws04-github-deployment-identity.yaml'
       - '.github/workflows/aws03-cloudformation-validate.yml'
   workflow_dispatch:
 
@@ -26,35 +27,54 @@ jobs:
         run: pip install cfn-lint
 
       - name: cfn-lint
-        run: cfn-lint infra/aws/cloudformation/aws03-security-audit-baseline.yaml
+        run: cfn-lint infra/aws/cloudformation/aws03-security-audit-baseline.yaml infra/aws/cloudformation/aws04-github-deployment-identity.yaml
 
-      - name: Governance invariants
+      - name: AWS-03 governance invariants
         shell: python
         run: |
           from pathlib import Path
-          p = Path('infra/aws/cloudformation/aws03-security-audit-baseline.yaml')
-          s = p.read_text()
+          s = Path('infra/aws/cloudformation/aws03-security-audit-baseline.yaml').read_text()
           required = [
-              'IsMultiRegionTrail: true',
-              'IncludeGlobalServiceEvents: true',
-              'EnableLogFileValidation: true',
-              'IsLogging: true',
-              'IncludeManagementEvents: true',
-              'ReadWriteType: All',
-              'ObjectLockEnabled: true',
-              'Mode: GOVERNANCE',
-              'BlockPublicAcls: true',
-              'IgnorePublicAcls: true',
-              'BlockPublicPolicy: true',
-              'RestrictPublicBuckets: true',
-              "aws:SecureTransport: 'false'",
-              'EnableKeyRotation: true',
-              'DeletionPolicy: Retain',
-              'UpdateReplacePolicy: Retain',
+              'IsMultiRegionTrail: true', 'IncludeGlobalServiceEvents: true',
+              'EnableLogFileValidation: true', 'IsLogging: true',
+              'IncludeManagementEvents: true', 'ReadWriteType: All',
+              'ObjectLockEnabled: true', 'Mode: GOVERNANCE',
+              'BlockPublicAcls: true', 'IgnorePublicAcls: true',
+              'BlockPublicPolicy: true', 'RestrictPublicBuckets: true',
+              "aws:SecureTransport: 'false'", 'EnableKeyRotation: true',
+              'DeletionPolicy: Retain', 'UpdateReplacePolicy: Retain',
           ]
           missing = [x for x in required if x not in s]
-          forbidden = ['DataResources:', 'InsightSelectors:']
-          present_forbidden = [x for x in forbidden if x in s]
-          if missing or present_forbidden:
-              raise SystemExit(f'missing={missing}; forbidden_present={present_forbidden}')
+          forbidden = [x for x in ['DataResources:', 'InsightSelectors:'] if x in s]
+          if missing or forbidden:
+              raise SystemExit(f'missing={missing}; forbidden_present={forbidden}')
           print('AWS-03 governance invariants PASS')
+
+      - name: AWS-04 identity invariants
+        shell: python
+        run: |
+          from pathlib import Path
+          s = Path('infra/aws/cloudformation/aws04-github-deployment-identity.yaml').read_text()
+          required = [
+              'GitHubActions-SIOS-AWS03-Deploy',
+              'SourceEnergy-AWS03-CloudFormation-Execution',
+              'SourceEnergy-AWS03-ExecutionBoundary',
+              'sts:AssumeRoleWithWebIdentity',
+              'token.actions.githubusercontent.com:aud: sts.amazonaws.com',
+              'repo:${Repository}:ref:refs/heads/${DeploymentBranch}',
+              'Action: iam:PassRole',
+              'iam:PassedToService: cloudformation.amazonaws.com',
+              'PermissionsBoundary: !Ref Aws03ExecutionBoundary',
+              'Service: cloudformation.amazonaws.com',
+          ]
+          missing = [x for x in required if x not in s]
+          forbidden = [
+              'Action: "*"', "Action: '*'", '- iam:*',
+              '- iam:CreatePolicy\n', '- iam:CreatePolicyVersion\n',
+              '- iam:AttachRolePolicy\n', '- iam:AttachUserPolicy\n',
+              '- iam:AttachGroupPolicy\n',
+          ]
+          present = [x for x in forbidden if x in s]
+          if missing or present:
+              raise SystemExit(f'missing={missing}; forbidden_present={present}')
+          print('AWS-04 identity invariants PASS')
