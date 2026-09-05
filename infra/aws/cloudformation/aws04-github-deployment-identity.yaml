@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SourceEnergy AWS-04 GitHub OIDC deployment identity for governed AWS-03 CloudFormation delivery.
+
+Parameters:
+  GitHubOidcProviderArn:
+    Type: String
+    Default: arn:aws:iam::173962540473:oidc-provider/token.actions.githubusercontent.com
+  Repository:
+    Type: String
+    Default: Everwild1/SOURCEENERGY-INTELLIGENCE-OPERATING-SYSTEM-SIOS-
+  DeploymentBranch:
+    Type: String
+    Default: main
+
+Resources:
+  SiosAws03DeploymentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: GitHubActions-SIOS-AWS03-Deploy
+      Path: /github-actions/
+      Description: Keyless GitHub Actions deployment identity restricted to SIOS main for AWS-03 governance infrastructure.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOidcProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${Repository}:ref:refs/heads/${DeploymentBranch}
+      Policies:
+        - PolicyName: Aws03CloudFormationControlPlane
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: GovernAws03Stack
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:GetTemplate
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:ValidateTemplate
+                Resource:
+                  - !Sub arn:${AWS::Partition}:cloudformation:us-west-2:${AWS::AccountId}:stack/sourceenergy-aws03-security-audit/*
+                  - !Sub arn:${AWS::Partition}:cloudformation:us-west-2:${AWS::AccountId}:stack/sourceenergy-aws03-security-audit
+              - Sid: CreateAws03StackBootstrap
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ValidateTemplate
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: us-west-2
+      Tags:
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: System
+          Value: SourceEnergy
+        - Key: Purpose
+          Value: AWS03GovernedDeployment
+        - Key: GitHubRepository
+          Value: !Ref Repository
+
+Outputs:
+  DeploymentRoleArn:
+    Value: !GetAtt SiosAws03DeploymentRole.Arn
+    Description: OIDC role assumed by approved SIOS main-branch AWS-03 deployment workflow.
