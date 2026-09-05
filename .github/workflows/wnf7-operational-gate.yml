@@ -1,0 +1,72 @@
+name: WNF-7 Operational Control Gate
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**wnf7*.sql'
+      - 'supabase/tests/wnf7*.sql'
+      - 'docs/wnf7/**'
+      - 'setc/wnf7/**'
+      - 'tests/test_wnf7_*.py'
+      - '.github/workflows/wnf7-operational-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Create Supabase role contract
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN;
+          SQL
+
+      - name: Apply WNF-7 operational migration
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260904090000_wnf7_operational_control_plane.sql
+
+      - name: Run WNF-7 fail-closed tests
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/wnf7_operational_control_plane.sql
+
+      - name: Apply WNF-7 evidence mobilization migration
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260904204433_wnf7_evidence_mobilization.sql
+
+      - name: Run WNF-7 evidence mobilization tests
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/wnf7_evidence_mobilization.sql
+
+      - name: Apply WNF-7 human-control setup migration
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260904221529_wnf7_human_control_setup.sql
+
+      - name: Run WNF-7 human-control setup tests
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/wnf7_human_control_setup.sql
+
+      - name: Compile WNF-7 runtime
+        run: python -m compileall -q setc/wnf7
+
+      - name: Run WNF-7 runtime tests
+        run: python -m unittest discover -s tests -p 'test_wnf7_*.py' -v

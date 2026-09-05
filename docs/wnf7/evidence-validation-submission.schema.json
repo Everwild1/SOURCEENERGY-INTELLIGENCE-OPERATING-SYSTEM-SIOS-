@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sourceenergyglobal.com/schemas/wnf7/evidence-validation-submission.schema.json",
+  "title": "WNF-7 Evidence Validation Submission",
+  "description": "Strict human evidence-review outcome. It creates a new append-only validation record and never mutates the candidate evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pilot_code",
+    "scenario_code",
+    "candidate_evidence_ref",
+    "validation_evidence_ref",
+    "source_system",
+    "content_sha256",
+    "freshness_status",
+    "validation_status",
+    "observed_at",
+    "validated_at",
+    "validated_by",
+    "validated_by_role_code",
+    "rationale_summary"
+  ],
+  "properties": {
+    "pilot_code": {"const": "PILOT-7D-001"},
+    "scenario_code": {"type": "string", "pattern": "^SCN-[0-9]{3}$"},
+    "candidate_evidence_ref": {"$ref": "#/$defs/controlledRef"},
+    "validation_evidence_ref": {"$ref": "#/$defs/controlledRef"},
+    "source_system": {"type": "string", "minLength": 1},
+    "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "freshness_status": {"enum": ["CURRENT", "STALE", "EXPIRED", "NOT_APPLICABLE"]},
+    "validation_status": {"enum": ["VALIDATED", "GAP", "CONTRADICTORY", "REJECTED"]},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "validated_at": {"type": "string", "format": "date-time"},
+    "validated_by": {"type": "string", "format": "uuid"},
+    "validated_by_role_code": {"$ref": "#/$defs/reviewerRole"},
+    "rationale_summary": {"type": "string", "minLength": 1},
+    "metadata": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"validation_status": {"const": "VALIDATED"}},
+        "required": ["validation_status"]
+      },
+      "then": {
+        "properties": {"freshness_status": {"enum": ["CURRENT", "NOT_APPLICABLE"]}}
+      }
+    }
+  ],
+  "$defs": {
+    "controlledRef": {"type": "string", "pattern": "^controlled://", "minLength": 14},
+    "reviewerRole": {
+      "enum": [
+        "QA_LEAD",
+        "TECH_AUTHORITY",
+        "SETC_OWNER",
+        "SOURCECUBE_OWNER",
+        "PILOT_OWNER",
+        "KNOWLEDGE_GOVERNOR"
+      ]
+    }
+  }
+}

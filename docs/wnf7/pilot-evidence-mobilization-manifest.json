@@ -1,0 +1,309 @@
+{
+  "schema_version": "wnf7-evidence-mobilization-manifest/1.0",
+  "manifest_id": "WNF7-EVIDENCE-MOBILIZATION-001",
+  "pilot_code": "PILOT-7D-001",
+  "generated_at": "2026-09-04T22:40:00Z",
+  "classification": "CONTROLLED_NON_PRODUCTION",
+  "sources": {
+    "technical_package": {
+      "controlled_ref": "SRC-011",
+      "name": "PILOT-7D-001 Exact Charter Execution",
+      "version": "1.3",
+      "classification": "CONTROLLED_PILOT_TEST_EVIDENCE",
+      "authority_posture": "DOES_NOT_CONFER_AUTHORITY",
+      "execution_allowed": false
+    },
+    "human_control_register": {
+      "controlled_ref": "SRC-013",
+      "name": "WNF-7 Human Adjudication Control Register",
+      "version": "1.5",
+      "control_state": "READY_FOR_REVIEW",
+      "production_authorization": "NO"
+    },
+    "governance_nomination_register": {
+      "controlled_ref": "SRC-014",
+      "name": "WNF-7 Governance Nomination Register",
+      "location": "CONTROLLED_DRIVE_MASTER_REGISTRY",
+      "control_state": "FIVE_NOMINATED_ONE_AWAITING_INDEPENDENT_CONFIRMATION",
+      "production_authorization": "NO"
+    }
+  },
+  "integrity": {
+    "verification_method": "SHA-256 byte comparison against the package manifest",
+    "artifact_integrity_verified": true,
+    "substantive_validation_complete": false,
+    "manifest_sha256": "cac5cd8757e52af04b6bed409879e70f6fd5abdc1e7c3842f4411e77580c0811",
+    "artifacts": [
+      {
+        "name": "README.md",
+        "sha256": "7c3ce436d5a99996cdf423a124f01cd7ec40b376c4f4378bcfeeb24788c596a6",
+        "matches_manifest": true
+      },
+      {
+        "name": "charter-scenarios.json",
+        "sha256": "74c83e89a22b8a25b6e78dc333cef2b54ccd5983bcaf5833bc47adb86f279303",
+        "matches_manifest": true
+      },
+      {
+        "name": "run-charter-portfolio.js",
+        "sha256": "b7361befbd6cd7e28289ad9cea1ec41a37c3f661a6d7c9581da68fe8a571e025",
+        "matches_manifest": true
+      },
+      {
+        "name": "charter-results.json",
+        "sha256": "2af020c74f36472f021e27e2fa549f47012ae8ba39bd3dad0fe39f0db4dbe98c",
+        "matches_manifest": true
+      },
+      {
+        "name": "charter-ledger.jsonl",
+        "sha256": "2f4ef5b68c0a67009ca13ecc185c3317839a310e17791c09cb20f9de8b004d6a",
+        "matches_manifest": true
+      },
+      {
+        "name": "reviewer-adjudication-queue.json",
+        "sha256": "9a3aba55bcc79af53b470d3b67203b712634ca37ceb2666458b833b4e3f0099a",
+        "matches_manifest": true
+      },
+      {
+        "name": "defect-register.json",
+        "sha256": "f93cb0ec3809c5c187c75b422e61b28431274675c924941b83e405d1e952080a",
+        "matches_manifest": true
+      }
+    ]
+  },
+  "automated_execution_summary": {
+    "observed_at": "2026-09-04T16:11:22.304Z",
+    "scenario_count": 15,
+    "automated_passed": 15,
+    "automated_failed": 0,
+    "valid_advisory_outputs": 15,
+    "human_review_required": 15,
+    "human_adjudications_completed": 0,
+    "null_execution_commands": 15,
+    "ledger_entries": 15,
+    "ledger_chain_verified": true,
+    "open_automated_defects": 0
+  },
+  "human_control_status": {
+    "system_mode": "SETUP",
+    "human_designer_status": "SYSTEM_DESIGNER_NOT_APPROVER",
+    "required_reviewer_roles": 6,
+    "reviewer_assignment_slots_initialized": 6,
+    "nominated_reviewer_roles": 5,
+    "unassigned_reviewer_roles": 1,
+    "knowledge_governor_designation": "AWAITING_INDEPENDENT_BOARD_CONFIRMATION",
+    "alternate_reviewers": 1,
+    "accepted_reviewer_roles": 0,
+    "required_validated_evidence_packets": 15,
+    "validated_evidence_packets": 0,
+    "required_completed_decisions": 15,
+    "completed_decisions": 0,
+    "gate_state": "HOLD",
+    "derived_operational_readiness": "HOLD_INCOMPLETE",
+    "evidence_mobilization_state": "MOBILIZED_PENDING_HUMAN_VALIDATION",
+    "human_control_setup_state": "SYSTEM_SETUP_COMPLETE_AWAITING_HUMAN_ACTION",
+    "production_authorized": false
+  },
+  "covered_components": [
+    "SETC",
+    "SOURCECUBE",
+    "CODEX_VERITAS",
+    "SOURCEONE",
+    "SIOS",
+    "SIDEKICK_OEL",
+    "SOURCECOIN",
+    "SOURCEBLOCK"
+  ],
+  "reviewer_roles": [
+    "QA_LEAD",
+    "TECH_AUTHORITY",
+    "SETC_OWNER",
+    "SOURCECUBE_OWNER",
+    "PILOT_OWNER",
+    "KNOWLEDGE_GOVERNOR"
+  ],
+  "scenarios": [
+    {
+      "scenario_code": "SCN-001",
+      "dimensions": ["FEAR"],
+      "expected_automated_state": "PASS",
+      "decision_eligibility": "ELIGIBLE_FOR_HUMAN_DECISION",
+      "reviewer_role_code": "SETC_OWNER",
+      "required_evidence": "Authority and rule references",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-001",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-002",
+      "dimensions": ["FEAR"],
+      "expected_automated_state": "BLOCKED",
+      "decision_eligibility": "NOT_ELIGIBLE",
+      "reviewer_role_code": "SETC_OWNER",
+      "required_evidence": "Negative resolver result and governing requirement",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-002",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-003",
+      "dimensions": ["FEAR"],
+      "expected_automated_state": "BLOCKED",
+      "decision_eligibility": "NOT_ELIGIBLE",
+      "reviewer_role_code": "SETC_OWNER",
+      "required_evidence": "Authority metadata, expiry, scope, and denial trace",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-003",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-004",
+      "dimensions": ["PRESENCE"],
+      "expected_automated_state": "REVIEW",
+      "decision_eligibility": "SIMULATION_ONLY",
+      "reviewer_role_code": "TECH_AUTHORITY",
+      "required_evidence": "Identity registry results and collision trace",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-004",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-005",
+      "dimensions": ["KNOWLEDGE"],
+      "expected_automated_state": "REVIEW",
+      "decision_eligibility": "SIMULATION_ONLY",
+      "reviewer_role_code": "QA_LEAD",
+      "required_evidence": "Evidence timestamp and freshness policy",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-005",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-006",
+      "dimensions": ["KNOWLEDGE"],
+      "expected_automated_state": "REVIEW",
+      "decision_eligibility": "SIMULATION_ONLY",
+      "reviewer_role_code": "QA_LEAD",
+      "required_evidence": "Both sources, contradiction record, and reviewer route",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-006",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-007",
+      "dimensions": ["KNOWLEDGE"],
+      "expected_automated_state": "BLOCKED",
+      "decision_eligibility": "NOT_ELIGIBLE",
+      "reviewer_role_code": "QA_LEAD",
+      "required_evidence": "Prompt/output trace and classification rule",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-007",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-008",
+      "dimensions": ["WISDOM"],
+      "expected_automated_state": "BLOCKED",
+      "decision_eligibility": "NOT_ELIGIBLE",
+      "reviewer_role_code": "PILOT_OWNER",
+      "required_evidence": "Purpose statement and architecture rule",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-008",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-009",
+      "dimensions": ["UNDERSTANDING"],
+      "expected_automated_state": "REVIEW",
+      "decision_eligibility": "SIMULATION_ONLY",
+      "reviewer_role_code": "QA_LEAD",
+      "required_evidence": "Jurisdiction inputs and unresolved lookup",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-009",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-010",
+      "dimensions": ["UNDERSTANDING"],
+      "expected_automated_state": "BLOCKED",
+      "decision_eligibility": "NOT_ELIGIBLE",
+      "reviewer_role_code": "QA_LEAD",
+      "required_evidence": "Affected-party and risk analysis",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-010",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-011",
+      "dimensions": ["COUNSEL"],
+      "expected_automated_state": "BLOCKED",
+      "decision_eligibility": "NOT_ELIGIBLE",
+      "reviewer_role_code": "KNOWLEDGE_GOVERNOR",
+      "required_evidence": "Approval matrix and missing approval trace",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-011",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-012",
+      "dimensions": ["COUNSEL"],
+      "expected_automated_state": "BLOCKED",
+      "decision_eligibility": "NOT_ELIGIBLE",
+      "reviewer_role_code": "KNOWLEDGE_GOVERNOR",
+      "required_evidence": "Exception policy and lookup result",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-012",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-013",
+      "dimensions": ["MIGHT_POWER"],
+      "expected_automated_state": "BLOCKED",
+      "decision_eligibility": "NOT_ELIGIBLE",
+      "reviewer_role_code": "SOURCECUBE_OWNER",
+      "required_evidence": "Idempotency key and replay detection trace",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-013",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-014",
+      "dimensions": ["MIGHT_POWER"],
+      "expected_automated_state": "REVIEW",
+      "decision_eligibility": "SIMULATION_ONLY",
+      "reviewer_role_code": "SOURCECUBE_OWNER",
+      "required_evidence": "Instruction trace and missing confirmation",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-014",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    },
+    {
+      "scenario_code": "SCN-015",
+      "dimensions": [
+        "FEAR",
+        "PRESENCE",
+        "WISDOM",
+        "KNOWLEDGE",
+        "UNDERSTANDING",
+        "COUNSEL",
+        "MIGHT_POWER"
+      ],
+      "expected_automated_state": "BLOCKED",
+      "decision_eligibility": "NOT_ELIGIBLE",
+      "reviewer_role_code": "KNOWLEDGE_GOVERNOR",
+      "required_evidence": "Before/after records and mutation-isolation trace",
+      "candidate_evidence_ref": "controlled://SRC-011/scenario/SCN-015",
+      "freshness_status": "PENDING",
+      "validation_status": "PENDING"
+    }
+  ],
+  "guardrails": {
+    "system_designer_is_approval_authority": false,
+    "stores_private_drive_locations": false,
+    "candidate_records_are_validated_evidence": false,
+    "technical_integrity_confers_authority": false,
+    "technical_integrity_advances_release_gate": false,
+    "technical_integrity_authorizes_production": false,
+    "execution_allowed": false
+  }
+}

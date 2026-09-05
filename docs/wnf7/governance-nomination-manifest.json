@@ -1,0 +1,77 @@
+{
+  "schema_version": "wnf7-governance-nomination-manifest/1.0",
+  "manifest_id": "WNF7-GOVERNANCE-NOMINATION-001",
+  "pilot_code": "PILOT-7D-001",
+  "effective_at": "2026-09-04T22:40:00Z",
+  "classification": "CONTROLLED_NON_PRODUCTION",
+  "control_register": {
+    "controlled_ref": "SRC-014",
+    "location": "CONTROLLED_DRIVE_MASTER_REGISTRY",
+    "github_contains_personal_contact_data": false
+  },
+  "appointing_subject_ref": "controlled://SRC-014/subject/3fa3decd-c0a8-5d3e-b3cc-306ab66f0a19",
+  "primary_role_nominations": [
+    {
+      "reviewer_role_code": "QA_LEAD",
+      "reviewer_subject_ref": "controlled://SRC-014/subject/88564e03-8ae3-5045-b217-19d42b24e8bb",
+      "appointment_evidence_ref": "controlled://SRC-014/nomination/QA_LEAD",
+      "mobilization_status": "NOMINATED",
+      "conflict_status": "PENDING",
+      "accepted": false
+    },
+    {
+      "reviewer_role_code": "TECH_AUTHORITY",
+      "reviewer_subject_ref": "controlled://SRC-014/subject/bc49739c-a26c-5c8c-bc6b-7467053972d7",
+      "appointment_evidence_ref": "controlled://SRC-014/nomination/TECH_AUTHORITY",
+      "mobilization_status": "NOMINATED",
+      "conflict_status": "PENDING",
+      "accepted": false
+    },
+    {
+      "reviewer_role_code": "SETC_OWNER",
+      "reviewer_subject_ref": "controlled://SRC-014/subject/f70182c5-6af2-5d15-885c-d4a51a67b622",
+      "appointment_evidence_ref": "controlled://SRC-014/nomination/SETC_OWNER",
+      "mobilization_status": "NOMINATED",
+      "conflict_status": "PENDING",
+      "accepted": false
+    },
+    {
+      "reviewer_role_code": "SOURCECUBE_OWNER",
+      "reviewer_subject_ref": "controlled://SRC-014/subject/7e48275a-1298-54cd-9971-f26dd24c980e",
+      "appointment_evidence_ref": "controlled://SRC-014/nomination/SOURCECUBE_OWNER",
+      "mobilization_status": "NOMINATED",
+      "conflict_status": "PENDING",
+      "accepted": false
+    },
+    {
+      "reviewer_role_code": "PILOT_OWNER",
+      "reviewer_subject_ref": "controlled://SRC-014/subject/485019a9-0504-537b-8997-327286f99dcf",
+      "appointment_evidence_ref": "controlled://SRC-014/nomination/PILOT_OWNER",
+      "mobilization_status": "NOMINATED",
+      "conflict_status": "PENDING",
+      "accepted": false
+    }
+  ],
+  "knowledge_governor_designation": {
+    "reviewer_role_code": "KNOWLEDGE_GOVERNOR",
+    "proposed_subject_ref": "controlled://SRC-014/subject/3fa3decd-c0a8-5d3e-b3cc-306ab66f0a19",
+    "mobilization_status": "UNASSIGNED",
+    "appointment_status": "AWAITING_INDEPENDENT_BOARD_CONFIRMATION",
+    "self_appointment_allowed": false,
+    "accepted": false
+  },
+  "alternate_reviewer": {
+    "subject_ref": "controlled://SRC-014/subject/7abf31ad-a81f-5f0d-94ee-85d142950c99",
+    "status": "ALTERNATE_NOT_ASSIGNED_TO_PRIMARY_SLOT"
+  },
+  "summary": {
+    "required_primary_roles": 6,
+    "nominated_primary_roles": 5,
+    "unassigned_primary_roles": 1,
+    "accepted_primary_roles": 0,
+    "alternate_reviewers": 1,
+    "gate_state": "HOLD",
+    "production_authorized": false,
+    "authority_posture": "DOES_NOT_CONFER_AUTHORITY"
+  }
+}

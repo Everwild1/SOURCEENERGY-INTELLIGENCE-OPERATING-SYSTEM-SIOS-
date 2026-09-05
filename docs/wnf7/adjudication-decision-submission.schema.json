@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sourceenergyglobal.com/schemas/wnf7/adjudication-decision-submission.schema.json",
+  "title": "WNF-7 Adjudication Decision Submission",
+  "description": "Strict accountable human decision packet. It records a review outcome but cannot execute an action, advance a release gate, or authorize production.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pilot_code",
+    "scenario_code",
+    "reviewer_subject_id",
+    "reviewer_role_code",
+    "disposition",
+    "decision_status",
+    "rationale_summary",
+    "decided_at",
+    "evidence_refs",
+    "automated_result_ref"
+  ],
+  "properties": {
+    "pilot_code": {"const": "PILOT-7D-001"},
+    "scenario_code": {"type": "string", "pattern": "^SCN-[0-9]{3}$"},
+    "reviewer_subject_id": {"type": "string", "format": "uuid"},
+    "reviewer_role_code": {"$ref": "#/$defs/reviewerRole"},
+    "disposition": {"enum": ["CONFIRM", "OVERRIDE", "HOLD"]},
+    "decision_status": {"enum": ["IN_REVIEW", "COMPLETE", "HOLD", "REMEDIATION_REQUIRED"]},
+    "rationale_summary": {"type": "string", "minLength": 1},
+    "attestation_ref": {"$ref": "#/$defs/controlledRef"},
+    "decided_at": {"type": "string", "format": "date-time"},
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/controlledRef"}
+    },
+    "automated_result_ref": {"$ref": "#/$defs/controlledRef"},
+    "metadata": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"decision_status": {"const": "COMPLETE"}},
+        "required": ["decision_status"]
+      },
+      "then": {"required": ["attestation_ref"]}
+    }
+  ],
+  "$defs": {
+    "controlledRef": {"type": "string", "pattern": "^controlled://", "minLength": 14},
+    "reviewerRole": {
+      "enum": [
+        "QA_LEAD",
+        "TECH_AUTHORITY",
+        "SETC_OWNER",
+        "SOURCECUBE_OWNER",
+        "PILOT_OWNER",
+        "KNOWLEDGE_GOVERNOR"
+      ]
+    }
+  }
+}
