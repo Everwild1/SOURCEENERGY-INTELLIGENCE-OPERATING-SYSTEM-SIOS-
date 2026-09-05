@@ -1,0 +1,17 @@
+insert into iotf.organization_evidence(wim_organization_id,evidence_code,evidence_class,title,source_system,source_reference,evidence_status,authority_level,claims,verification_notes,metadata)
+select o.id,x.code,x.class,x.title,'GOOGLE_DRIVE',x.ref,'REVIEWED','INTERNAL',x.claims,x.notes,x.metadata
+from wim.organizations o
+cross join (values
+ ('ESB-OM-GD-REGISTRAR-PACKET','CORPORATE_REGISTRATION','Registrar Presentation Packet','https://docs.google.com/document/d/1ulSf4B45y33f9FveYwe2Xj-A6sqqkXLBD8t2aQ9537I',jsonb_build_object('cr_number','1608781','jurisdiction','Sultanate of Oman','registered_office','Sultanate of Oman','proposed_activities',jsonb_build_array('Commodity Trade','Energy Distribution','Infrastructure Supply','Technology Licensing'),'proposed_authorized_capital_omr',200000,'activity_codes_recommended',jsonb_build_array('466101','702002','432101')), 'Internal registrar packet and templates; does not itself constitute a government-issued CR certificate, bank deposit confirmation, or regulator approval.', jsonb_build_object('review_scope','document content only','independent_authority_verification',false,'contains_templates',true)),
+ ('ESB-OM-GD-BANK-PRESENTATION','BANKING','Bank Presentation Letter','https://docs.google.com/document/d/1w_sO6SexOV6JQpo6E6Pe_w17L3Boddcpw3Lge-athMU',jsonb_build_object('cr_number','1608781','occi_membership','848191','occi_certificate_date','2025-05-29','head_office','Muscat Governorate','registration_grade','Fourth','purpose','support corporate bank account opening'), 'Internal presentation letter supporting bank onboarding; not evidence that a bank account was opened or that a bank independently verified the company.', jsonb_build_object('review_scope','document content only','independent_bank_verification',false)),
+ ('ESB-OM-GD-OCCI-ADDENDUM','CORPORATE_REGISTRATION','OCCI Membership Addendum','https://docs.google.com/document/d/1ekbPKMO6zD6FybMMPFWtdwrakeN7IaR3yi1JKSr16Ms',jsonb_build_object('cr_number','1608781','occi_number','848191','registration_grade','Fourth','head_office','Muscat Governorate','issue_date','2025-05-29','expiry_date','2026-05-27'), 'Internal addendum asserting OCCI membership details. Expiry date stated as 2026-05-27; as of 2026-08-22 this is historical evidence and does not establish current OCCI standing. Underlying OCCI-issued certificate has not been independently reviewed.', jsonb_build_object('review_scope','document content only','independent_occi_verification',false,'current_standing_established',false))
+) x(code,class,title,ref,claims,notes,metadata)
+where lower(o.legal_name)='energy source business' and o.jurisdiction_code='OM'
+on conflict(wim_organization_id,evidence_code) do update set claims=excluded.claims,verification_notes=excluded.verification_notes,metadata=excluded.metadata,reviewed_at=now();
+
+update iotf.organization_evidence set reviewed_at=coalesce(reviewed_at,now())
+where wim_organization_id=(select id from wim.organizations where lower(legal_name)='energy source business' and jurisdiction_code='OM')
+and evidence_code in ('ESB-OM-GD-REGISTRAR-PACKET','ESB-OM-GD-BANK-PRESENTATION','ESB-OM-GD-OCCI-ADDENDUM');
+
+update wim.organizations set provenance=provenance || jsonb_build_object('google_drive_evidence_reviewed',true,'cross_repository_identifiers_consistent',true,'occi_current_standing',false,'occi_evidence_expiry','2026-05-27')
+where lower(legal_name)='energy source business' and jurisdiction_code='OM';
