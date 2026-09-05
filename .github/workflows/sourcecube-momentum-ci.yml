@@ -1,0 +1,43 @@
+name: SourceCube Momentum CI
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/sourcecube/**'
+      - 'docs/architecture/SC-MUW-001.md'
+      - 'setc/sourcecube/**'
+      - '.github/workflows/sourcecube-momentum-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/sourcecube/**'
+      - 'docs/architecture/SC-MUW-001.md'
+      - 'setc/sourcecube/**'
+      - '.github/workflows/sourcecube-momentum-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  sourcecube-contract-and-authority-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile SourceCube package
+        run: python -m compileall -q setc/sourcecube
+      - name: Validate JSON contracts
+        run: |
+          python -m json.tool contracts/sourcecube/governed-event.v1.schema.json >/dev/null
+          python -m json.tool contracts/sourcecube/momentum-unwind-policy.v1.json >/dev/null
+          python -m json.tool contracts/sourcecube/source-authority.v1.json >/dev/null
+      - name: Run SourceCube tests
+        run: python -m unittest discover -s setc/sourcecube/tests -p 'test_*.py' -v
+      - name: Guard execution authority
+        run: |
+          ! grep -R -n -E '(place_trade|execute_trade|modify_account|submit_order|decision_eligible[[:space:]]*=[[:space:]]*True)' setc/sourcecube --include='*.py'
+      - name: Guard Supabase migrations pending SETC target selection
+        run: |
+          test -z "$(find supabase/migrations -maxdepth 1 -type f -iname '*sc_muw*' -print -quit)"

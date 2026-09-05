@@ -1,0 +1,25 @@
+{
+  "policy_version": "sourcecube.momentum-unwind/1.0",
+  "status": "implementation_baseline_pending_setc_ratification",
+  "thresholds": {
+    "daily_decline_pct_gte": 5.0,
+    "vix_gt": 25.0,
+    "bearish_rsi_divergence": true,
+    "abnormal_volume": true,
+    "ten_year_yield_change_bps_gt": 15.0,
+    "sharp_usd_strength": true
+  },
+  "escalation": {
+    "alert_min_signals": 2,
+    "amber_min_signals": 2,
+    "red_min_signals": 3,
+    "material_reversal_is_reportable": true
+  },
+  "governance": {
+    "information_stage": "inference",
+    "autonomy_ceiling": "C2",
+    "decision_eligible": false,
+    "execution_enabled": false,
+    "doctrine": "observation != inference != official warning != authorization != execution"
+  }
+}
