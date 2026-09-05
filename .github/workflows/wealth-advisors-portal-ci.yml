@@ -1,0 +1,37 @@
+name: Wealth Advisors Portal CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/wealth-advisors-portal/**'
+      - '.github/workflows/wealth-advisors-portal-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/wealth-advisors-portal/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/wealth-advisors-portal
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/wealth-advisors-portal/package.json
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Build
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+        run: npm run build
