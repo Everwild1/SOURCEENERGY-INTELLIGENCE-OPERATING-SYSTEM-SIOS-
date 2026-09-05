@@ -1,20 +1,271 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: SourceEnergy AWS-04 GitHub OIDC deployment identity for governed AWS-03 CloudFormation delivery.
+Description: >-
+  SourceEnergy AWS-04 governed deployment identity — separates GitHub OIDC control-plane authority from a bounded CloudFormation execution role for AWS-03 delivery.
+
+Metadata:
+  AWSToolsMetrics:
+    AWSAgentToolkit: aws-cloudformation@2
+  com.aws.cloudformation.Context:
+    arch: GitHub OIDC -> deployment role -> iam:PassRole (one execution role) -> CloudFormation -> AWS-03 resources
+    must:
+      - GitHub trust remains restricted to the SIOS repository main branch and sts.amazonaws.com audience
+      - GitHub deployment role must not receive direct KMS/S3/IAM/CloudTrail/Logs provisioning permissions
+      - iam:PassRole must be scoped to the AWS-03 CloudFormation execution role and cloudformation.amazonaws.com
+      - CloudFormation execution role must carry the AWS-03 permissions boundary
+      - Boundary must not allow IAM managed-policy creation or attachment
+    owner: SourceEnergy SIOS
 
 Parameters:
   GitHubOidcProviderArn:
     Type: String
     Default: arn:aws:iam::173962540473:oidc-provider/token.actions.githubusercontent.com
+    Description: Existing GitHub Actions OIDC provider in the SourceEnergy AWS account.
   Repository:
     Type: String
     Default: Everwild1/SOURCEENERGY-INTELLIGENCE-OPERATING-SYSTEM-SIOS-
+    AllowedPattern: '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'
   DeploymentBranch:
     Type: String
     Default: main
+    AllowedPattern: '^[A-Za-z0-9._/-]+$'
+  Aws03StackName:
+    Type: String
+    Default: sourceenergy-aws03-security-audit
+    AllowedPattern: '^[A-Za-z][-A-Za-z0-9]*$'
 
 Resources:
+  Aws03ExecutionBoundary:
+    Type: AWS::IAM::ManagedPolicy
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: maximum-permission ceiling for the CloudFormation service role; permits only the service families needed by AWS-03 and blocks general IAM policy administration
+        must:
+          - Never add iam:CreatePolicy, iam:CreatePolicyVersion, iam:AttachRolePolicy, iam:AttachUserPolicy, iam:AttachGroupPolicy, or broad iam:* permissions
+          - Keep IAM role mutation scoped to the AWS-03 CloudTrail Logs role name
+          - Regional actions remain restricted to us-west-2 where condition support applies
+        mutable: review-required
+    Properties:
+      Description: SourceEnergy AWS-03 CloudFormation execution permission boundary.
+      ManagedPolicyName: SourceEnergy-AWS03-ExecutionBoundary
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowAws03RegionalServices
+            Effect: Allow
+            Action:
+              - cloudtrail:CreateTrail
+              - cloudtrail:UpdateTrail
+              - cloudtrail:StartLogging
+              - cloudtrail:StopLogging
+              - cloudtrail:DeleteTrail
+              - cloudtrail:GetTrail
+              - cloudtrail:GetTrailStatus
+              - cloudtrail:PutEventSelectors
+              - cloudtrail:GetEventSelectors
+              - cloudtrail:AddTags
+              - cloudtrail:RemoveTags
+              - logs:CreateLogGroup
+              - logs:DeleteLogGroup
+              - logs:PutRetentionPolicy
+              - logs:DeleteRetentionPolicy
+              - logs:AssociateKmsKey
+              - logs:DisassociateKmsKey
+              - logs:TagResource
+              - logs:UntagResource
+              - logs:DescribeLogGroups
+              - kms:CreateKey
+              - kms:DescribeKey
+              - kms:EnableKeyRotation
+              - kms:DisableKeyRotation
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+              - kms:CreateAlias
+              - kms:UpdateAlias
+              - kms:DeleteAlias
+              - kms:TagResource
+              - kms:UntagResource
+              - kms:PutKeyPolicy
+              - kms:GetKeyPolicy
+            Resource: '*'
+            Condition:
+              StringEquals:
+                aws:RequestedRegion: us-west-2
+          - Sid: AllowAws03S3Control
+            Effect: Allow
+            Action:
+              - s3:CreateBucket
+              - s3:DeleteBucket
+              - s3:GetBucketLocation
+              - s3:GetBucketPolicy
+              - s3:PutBucketPolicy
+              - s3:DeleteBucketPolicy
+              - s3:GetBucketPublicAccessBlock
+              - s3:PutBucketPublicAccessBlock
+              - s3:GetEncryptionConfiguration
+              - s3:PutEncryptionConfiguration
+              - s3:GetBucketVersioning
+              - s3:PutBucketVersioning
+              - s3:GetBucketOwnershipControls
+              - s3:PutBucketOwnershipControls
+              - s3:DeleteBucketOwnershipControls
+              - s3:GetBucketLogging
+              - s3:PutBucketLogging
+              - s3:GetLifecycleConfiguration
+              - s3:PutLifecycleConfiguration
+              - s3:GetBucketObjectLockConfiguration
+              - s3:PutBucketObjectLockConfiguration
+              - s3:GetBucketTagging
+              - s3:PutBucketTagging
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::sourceenergy-aws03-*
+          - Sid: AllowAws03CloudTrailLogsRoleLifecycle
+            Effect: Allow
+            Action:
+              - iam:CreateRole
+              - iam:DeleteRole
+              - iam:GetRole
+              - iam:UpdateAssumeRolePolicy
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+              - iam:GetRolePolicy
+              - iam:ListRolePolicies
+              - iam:TagRole
+              - iam:UntagRole
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/sourceenergy-aws03-*
+          - Sid: AllowBoundaryIntrospection
+            Effect: Allow
+            Action:
+              - iam:GetPolicy
+              - iam:GetPolicyVersion
+            Resource: !Ref Aws03ExecutionBoundary
+
+  Aws03CloudFormationExecutionRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: CloudFormation, not GitHub Actions, receives the service permissions needed to materialize AWS-03; permission boundary caps the role even if its inline policy is later expanded
+        must:
+          - Trust only cloudformation.amazonaws.com
+          - PermissionsBoundary must always reference Aws03ExecutionBoundary
+          - IAM role operations remain scoped to AWS-03 CloudTrail Logs role
+        mutable: review-required
+    Properties:
+      RoleName: SourceEnergy-AWS03-CloudFormation-Execution
+      Path: /cloudformation/
+      Description: Bounded CloudFormation service role for SourceEnergy AWS-03 audit baseline.
+      PermissionsBoundary: !Ref Aws03ExecutionBoundary
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Aws03ExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Aws03RegionalProvisioning
+                Effect: Allow
+                Action:
+                  - cloudtrail:CreateTrail
+                  - cloudtrail:UpdateTrail
+                  - cloudtrail:StartLogging
+                  - cloudtrail:StopLogging
+                  - cloudtrail:DeleteTrail
+                  - cloudtrail:GetTrail
+                  - cloudtrail:GetTrailStatus
+                  - cloudtrail:PutEventSelectors
+                  - cloudtrail:GetEventSelectors
+                  - cloudtrail:AddTags
+                  - cloudtrail:RemoveTags
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:DeleteRetentionPolicy
+                  - logs:AssociateKmsKey
+                  - logs:DisassociateKmsKey
+                  - logs:TagResource
+                  - logs:UntagResource
+                  - logs:DescribeLogGroups
+                  - kms:CreateKey
+                  - kms:DescribeKey
+                  - kms:EnableKeyRotation
+                  - kms:DisableKeyRotation
+                  - kms:ScheduleKeyDeletion
+                  - kms:CancelKeyDeletion
+                  - kms:CreateAlias
+                  - kms:UpdateAlias
+                  - kms:DeleteAlias
+                  - kms:TagResource
+                  - kms:UntagResource
+                  - kms:PutKeyPolicy
+                  - kms:GetKeyPolicy
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: us-west-2
+              - Sid: Aws03S3Provisioning
+                Effect: Allow
+                Action:
+                  - s3:CreateBucket
+                  - s3:DeleteBucket
+                  - s3:GetBucketLocation
+                  - s3:GetBucketPolicy
+                  - s3:PutBucketPolicy
+                  - s3:DeleteBucketPolicy
+                  - s3:GetBucketPublicAccessBlock
+                  - s3:PutBucketPublicAccessBlock
+                  - s3:GetEncryptionConfiguration
+                  - s3:PutEncryptionConfiguration
+                  - s3:GetBucketVersioning
+                  - s3:PutBucketVersioning
+                  - s3:GetBucketOwnershipControls
+                  - s3:PutBucketOwnershipControls
+                  - s3:DeleteBucketOwnershipControls
+                  - s3:GetBucketLogging
+                  - s3:PutBucketLogging
+                  - s3:GetLifecycleConfiguration
+                  - s3:PutLifecycleConfiguration
+                  - s3:GetBucketObjectLockConfiguration
+                  - s3:PutBucketObjectLockConfiguration
+                  - s3:GetBucketTagging
+                  - s3:PutBucketTagging
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::sourceenergy-aws03-*
+              - Sid: Aws03CloudTrailLogsRoleLifecycle
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:TagRole
+                  - iam:UntagRole
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/sourceenergy-aws03-*
+      Tags:
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: System
+          Value: SourceEnergy
+        - Key: Purpose
+          Value: AWS03Execution
+
   SiosAws03DeploymentRole:
     Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: keyless GitHub control-plane identity can manage only the named AWS-03 stack and pass only the bounded AWS-03 execution role to CloudFormation
+        must:
+          - GitHub sub condition must remain restricted to the SIOS main branch
+          - iam:PassRole must remain scoped to Aws03CloudFormationExecutionRole
+          - Deployment role must not receive direct provisioning rights to KMS, S3, IAM, CloudTrail, or CloudWatch Logs
+        mutable: review-required
     Properties:
       RoleName: GitHubActions-SIOS-AWS03-Deploy
       Path: /github-actions/
@@ -40,6 +291,7 @@ Resources:
                 Effect: Allow
                 Action:
                   - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
                   - cloudformation:CreateChangeSet
                   - cloudformation:DescribeChangeSet
                   - cloudformation:ExecuteChangeSet
@@ -50,8 +302,7 @@ Resources:
                   - cloudformation:GetTemplateSummary
                   - cloudformation:ValidateTemplate
                 Resource:
-                  - !Sub arn:${AWS::Partition}:cloudformation:us-west-2:${AWS::AccountId}:stack/sourceenergy-aws03-security-audit/*
-                  - !Sub arn:${AWS::Partition}:cloudformation:us-west-2:${AWS::AccountId}:stack/sourceenergy-aws03-security-audit
+                  - !Sub arn:${AWS::Partition}:cloudformation:us-west-2:${AWS::AccountId}:stack/${Aws03StackName}/*
               - Sid: CreateAws03StackBootstrap
                 Effect: Allow
                 Action:
@@ -62,6 +313,13 @@ Resources:
                 Condition:
                   StringEquals:
                     aws:RequestedRegion: us-west-2
+              - Sid: PassOnlyAws03ExecutionRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt Aws03CloudFormationExecutionRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: cloudformation.amazonaws.com
       Tags:
         - Key: ManagedBy
           Value: CloudFormation
@@ -76,3 +334,9 @@ Outputs:
   DeploymentRoleArn:
     Value: !GetAtt SiosAws03DeploymentRole.Arn
     Description: OIDC role assumed by approved SIOS main-branch AWS-03 deployment workflow.
+  CloudFormationExecutionRoleArn:
+    Value: !GetAtt Aws03CloudFormationExecutionRole.Arn
+    Description: Bounded CloudFormation service role passed by the GitHub deployment identity.
+  ExecutionBoundaryArn:
+    Value: !Ref Aws03ExecutionBoundary
+    Description: Permission boundary constraining the AWS-03 CloudFormation execution role.
