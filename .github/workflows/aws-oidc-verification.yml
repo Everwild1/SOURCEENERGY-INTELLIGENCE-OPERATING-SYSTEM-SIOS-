@@ -1,0 +1,36 @@
+name: AWS OIDC Verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aws-oidc-verification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  verify-aws-identity:
+    name: Verify keyless AWS identity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Configure AWS credentials through GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::173962540473:role/github-actions/GitHubActions-SIOS-Verify
+          aws-region: us-east-1
+          role-session-name: GitHubActions-${{ github.run_id }}
+          role-duration-seconds: 900
+          allowed-account-ids: '173962540473'
+          mask-aws-account-id: true
+
+      - name: Verify expected AWS account
+        shell: bash
+        run: |
+          set -euo pipefail
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          test "$account_id" = "173962540473"
+          echo "AWS OIDC identity verification succeeded."
