@@ -1,0 +1,20 @@
+name: Schema Contract Governance
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deprecated-identifiers:
+    name: Reject deprecated schema identifiers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Enforce schema identifier contract
+        run: bash scripts/check-deprecated-schema-identifiers.sh
